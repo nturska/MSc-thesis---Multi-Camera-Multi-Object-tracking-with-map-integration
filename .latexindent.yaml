@@ -1,0 +1,8 @@
+defaultIndent: "  "
+modifyLineBreaks:
+  textWrapOptions:
+    columns: 100
+    perCodeBlockBasis: 1
+    masterDocument: 1
+    multipleSpacesToSingle: 1
+    removeSentenceLineBreaks: 0

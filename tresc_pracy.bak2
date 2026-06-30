@@ -1,0 +1,1129 @@
+\chapter{Wstęp}\label{chap:wprowadzenie}
+
+\chapter{Stan wiedzy}\label{chap:stan_wiedzy}
+Najwcześniejsze systemy telewizji przemysłowej \textit{(ang. Closed Circuit Television -- CCTV)}
+powstały w pierwszej połowie XX wieku i umożliwiały jedynie bieżącą obserwację zdarzeń, ze względu
+na brack technologii pozwalających na rejestrowanie i przechowywanie sygnału wideo. Rozwój nośników
+szpulowych umożliwił rejestrowanie materiału z monitoringu. Systemy te wymagały były jednak
+uciążliwe w obsłudze - wymagały ręcznej wymiany taśm magnetycznych oraz ręcznego nawijania taśmy na
+szpulę odbiorczą. Wraz z postępem technologicznym metody zapisu ulegały systematycznej poprawie, co
+przyczyniło się do popularyzacji systemów bezpieczeństwa. Już w latach 90. XX opracowano
+technologię multipleksowania cyfrowego, umożliwiającą jednoczesne nagrywanie z kilku kamer, a także
+nagrywanie w trybie poklatkowym i zapis wyłącznie przy wykryciu ruchu \cite{kreugle}.
+
+Istotny przełom w rozwoju systemów wideonadzoru przyniosła wizja komputerowa, rozwijana od lat 70.
+XX wieku, której nadrzędnym celem stało się pełne zautomatyzowane zrozumienie analizowanej sceny.
+Prawdziwą rewolucję w tej dziedzinie umożliwiło jednak dopiero znaczne zwiększenie mocy
+obliczeniowej, rozwój algorytmów uczenia maszynowego oraz powstanie wielkich, oznaczonych zbiorów
+danych (m.in. ImageNet, Microsoft COCO czy LVIS). Bazy te dostarczyły niezbędnych informacji do
+trenowania zaawansowanych modeli oraz pozwoliły na obiektywne mierzenie postępów w dziedzinie
+rozpoznawania i segmentacji obrazu \cite{szeliski2022}.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\section{Analiza obrazu i podstawowe definicje}
+
+\subsection{Komputerowa reprezentacja obrazu}
+Komputer, analizując obraz, sprowadza go do postaci macierzy pikseli, którym przypisane są wartości
+liczbowe zależne od koloru. Kształt tej macierzy zależy od przestrzeni barw, w jakiej
+reprezentowany jest dany obraz. W przypadku skali szarości obraz jest przedstawiany w postaci
+macierzy dwuwymiarowej, której elementy przyjmują wartości od 0 do 255, gdzie 0 oznacza czerń, a
+255 biel \cite{gonzalezwoods}.
+
+Obrazy przedstawione w pełnym spektrum kolorów zapisywane są najczęściej w przestrzeni RGB
+\textit{(ang. Red, Green, Blue)} lub HSV \textit{(ang. Hue, Saturation, Value)}. W takim przypadku
+obraz opisywany jest za pomocą trzech macierzy, a każdemu pikselowi przypisywane są trzy wartości z
+zakresu od 0 do 255. W przestrzeni RGB, która jest wykorzystywana częściej, wartości te odpowiadają
+odpowiednio natężeniu koloru czerwonego, zielonego i niebieskiego \cite{gonzalezwoods}. Takie
+przedstawienie pozwala na odwzorowanie pełnego spektrum barw w formie dogodnej do przetwarzania
+komputerowego.
+
+Liczba pikseli tworzących obraz jest równoznaczna z jego rozdzielczością\cite{gonzalezwoods}, a
+więc bezpośrednio wpływa na poziom szczegółowości widocznych obiektów i możliwości ich poprawnej
+detekcji. Nagrania wideo składają się z pojedynczych obrazów nazywanych w tym kontekście klatką lub
+ramką \textit{(ang. frame)}. Ciąg kolejnych klatek wyświetlanych w krótkich odstępach czasu tworzy
+wrażenie ruchu i stanowi strumień wideo. Liczba klatek na sekundę, wpływa na płynność nagrania oraz
+możliwość dokładnej analizy ruchu obiektów w czasie.
+
+\subsection{Model kamery i rzutowanie na plan terenu}
+Dla poprawnej analizy nagrań wideo należy wziąć pod uwagę sposób ich powstawania w kamerze. Aby
+możliwe było poprawne wyznaczanie położenia obiektów w scenie, stosuje się proces kalibracji
+kamery, który pozwala określić zależność między współrzędnymi punktów w przestrzeni rzeczywistej a
+ich położeniem w obrazie. Podstawą takiego opisu jest model otworkowy kamery \textit{(ang. pinhole
+  camera model)}, w którym obraz powstaje jako rzut perspektywiczny punktów trójwymiarowej sceny na
+dwuwymiarową płaszczyznę obrazu\cite{hartleyzisserman}.
+
+Pełny model kamery można zapisać w postaci iloczynu macierzy wewnętrznej oraz macierzy zewnętrznej.
+Macierz wewnętrzna opisuje właściwości samej kamery i sposób odwzorowania punktów w układzie kamery
+na współrzędne obrazu. Zawiera ona między innymi ogniskowe w osiach poziomej i pionowej, położenie
+punktu głównego oraz ewentualny parametr skośności osi. Parametry te określają więc geometryczne
+cechy obrazowania i wpływają na skalę oraz położenie obrazu w układzie pikseli\cite{szeliski2022}.
+
+Grupa parametrów zewnętrznych, opisuje położenie i orientację kamery względem układu współrzędnych
+sceny. Obejmują one macierz obrotu oraz wektor translacji. Parametry te opisują transformację
+punktów ze współrzędnych świata do układu współrzędnych kamery. Dzięki temu możliwe jest
+określenie, z którego miejsca kamera obserwuje scenę oraz w jakim kierunku jest
+skierowana\cite{szeliski2022}.
+
+Złożenie macierzy wewnętrznej i zewnętrznej daje pełną macierz projekcji kamery \(\mathbf{P} =
+\mathbf{K}[\mathbf{R} \mid \mathbf{t}]\), która opisuje kompletną transformację punktu z
+trójwymiarowej przestrzeni sceny do dwuwymiarowego układu pikselowego obrazu
+\cite{hartleyzisserman}.
+
+W praktyce rzeczywisty obraz może odbiegać od idealnego modelu z powodu dystorsji soczewki, która
+powoduje zniekształcenia, są one szczególnie widoczne na obrzeżach obrazu i wynikają z właściwości
+układu optycznego. Z tego względu w procesie kalibracji często wyznacza się również współczynniki
+pozwalające na korekcję tych zniekształceń przed dalszą analizą obrazu\cite{szeliski2022}.
+
+Do analizy wielu obrazów tej samej powierzchni lub terenu służy analiza homografii. W dziedzinie
+widzenia komputerowego dowolne dwa obrazy tej samej płaskiej powierzchni w przestrzeni są powiązane
+przekształceniem rzutowym, zwanym właśnie homografią. Opisuje się ją za pomocą macierzy
+\(\mathbf{H}\) o wymiarach \(3 \times 3\), która odwzorowuje punkty z jednej płaszczyzny na drugą z
+uwzględnieniem zniekształceń perspektywy. Macierz ta działa na punkty zapisane we współrzędnych
+jednorodnych i przyjmuje postać:
+\[
+  \lambda
+  \begin{bmatrix}
+    x' \\
+    y' \\
+    1
+  \end{bmatrix}
+  =
+  \mathbf{H}
+  \begin{bmatrix}
+    x \\
+    y \\
+    1
+  \end{bmatrix},
+\]
+gdzie \((x, y)\) oznacza współrzędne punktu w pierwszym układzie, \((x', y')\) współrzędne punktu
+po przekształceniu, natomiast \(\lambda\) jest współczynnikiem skali wynikającym z użycia
+współrzędnych jednorodnych. Taki zapis pozwala ująć w jednej macierzy przesunięcie, obrót, zmianę
+skali oraz zniekształcenie perspektywiczne \cite{zhang2000, szeliski2022}.
+
+W kontekście systemów wielokamerowych rzutowanie na plan terenu umożliwia przedstawienie
+trajektorii obiektów w jednej, wspólnej przestrzeni geometrycznej, niezależnie od położenia i
+orientacji poszczególnych kamer.
+
+Należy jednak zaznaczyć, że poprawność takiego rzutowania zależy od jakości kalibracji kamery oraz
+od tego, w jakim stopniu obserwowana scena spełnia założenie o płaskości terenu. W przypadku
+nierównego podłoża lub obiektów o znacznej wysokości konieczne jest zastosowanie bardziej
+rozbudowanych modeli geometrycznych.
+
+\subsection{Detekcja ruchu i odejmowanie tła}
+
+Technika odejmowania tła \textit{(ang. background subtraction)} umożliwia rozpoznanie ruchomych
+obiektów na nagraniach wideo dla statycznych scen poprzez oddzielenie pierwszego planu od tła.
+Przyjmując założenie, że tło pozostaje wzglęgnie niezmienne (mogą pojawiać się zmiany oświetlenia,
+zabrudzenia itp.), możliwe jest opisanie tła za pomocą modelu statystyczngo. Stworzony model tła
+odejmowany jest od obrazu, pozostawiając jedynie anomalie, czyli obiekty znajdujące się w ruchu,
+pierwszy plan zwracany jest zazwyczaj w postaci maski.\cite{zivkovic2004}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=.8\textwidth]{background-substraction.jpg}
+  %\vspace*{-10mm}
+  \caption{Wizualizacja procesu odejmowania tła. Źródło: \cite{background_subtraction}}
+  \label{fig:mog2}
+\end{figure}
+
+W kontekście projektowania zaawansowanych systemów śledzenia wielu obiektów i reidentyfikacji,
+algorytmy odejmowania tła pozwalają na ograniczenie obszaru poszukiwań, system może przetwarzać
+wyłącznie wykadrowane obszary ruchu (ang. Regions of Interest – ROI).
+
+\subsubsection{MOG2 (Mixture of Gaussians 2)}
+Algorytm MOG2 stanowi bezpośrednie rozwinięcie metody mieszanin rozkładów Gaussa zaproponowanej
+przez Stauffera i Grimsona. Model GMM \textit{(ang.~Gaussian Mixture Model)} zakłada stałą liczbę
+komponentów gaussowskich dla każdego piksela w scenie, co może prowadzić do namdmiernej złożoności
+obliczeniowej dla jednorodnych i statycznych obszarów obrazu. MOG2, opracowany przez Zivkovica,
+wprowadza adaptacyjny dobór liczby rozkładów dla każdego piksela z osobna.\cite{zivkovic2004}
+
+W~algorytmie MOG2 prawdopodobieństwo zaobserwowania określonej wartości piksela $\vec{x}$ w~chwili
+$t$ w~wielowymiarowej przestrzeni barw (np. RGB) jest opisywane przez ważoną sumę $M$ rozkładów
+normalnych~\cite{stauffer1999, zivkovic2004}:
+
+\begin{equation}
+  \hat{p}(\vec{x} \mid X_T, \text{BG}+\text{FG}) = \sum_{m=1}^{M} \hat{\pi}_m \mathcal{N}(\vec{x}; \hat{\vec{\mu}}_m, \hat{\sigma}_m^2 \mathbf{I})
+  \label{eq:mog2_prob}
+\end{equation}
+
+gdzie $\hat{\pi}_m$ oznacza oszacowaną wagę $m$-tego komponentu, $\hat{\vec{\mu}}_m$ jest jego
+wektorem średnich, natomiast $\hat{\sigma}_m^2 \mathbf{I}$ reprezentuje macierz
+kowariancji~\cite{stauffer1999, zivkovic2004}. Dla uproszczenia obliczeń zakłada się, że
+poszczególne kanały kolorów są od siebie niezależne i~posiadają tę samą wariancję, co sprowadza
+macierz kowariancji do iloczynu wariancji $\hat{\sigma}_m^2$ oraz macierzy jednostkowej
+$\mathbf{I}$~\cite{stauffer1999, zivkovic2004}. Wagi mieszaniny są nieujemne i~podlegają
+normalizacji, spełniając warunek $\sum_{m=1}^{M} \hat{\pi}_m = 1$~\cite{stauffer1999,
+  zivkovic2004}.
+
+Dla każdej nowej klatki obrazu i~każdej nowo zaobserwowanej wartości piksela $\vec{x}(t)$
+realizowana jest rekurencyjna aktualizacja parametrów modelu~\cite{stauffer1999, zivkovic2004}.
+Najpierw następuje porządkowanie komponentów według stosunku wagi do odchylenia standardowego
+($\hat{\pi}_m / \hat{\sigma}_m$), co faworyzuje rozkłady o~wysokiej wadze i~niskiej wariancji jako
+najbardziej prawdopodobne definicje tła~\cite{stauffer1999}. Dopasowanie próbki do istniejących
+komponentów określa się na podstawie odległości Mahalanobisa~\cite{stauffer1999, zivkovic2004}.
+Jeśli kwadrat tej odległości jest mniejszy od przyjętego progu (odpowiadającego zazwyczaj trzem
+odchyleniom standardowym), komponent uznaje się za dopasowany~\cite{stauffer1999}. Zmienna
+przynależności $o_m^{(t)}$ przyjmuje wówczas wartość 1 dla najlepiej dopasowanego rozkładu i~0 dla
+pozostałych~\cite{stauffer1999}. Aktualizacja parametrów zachodzi według następujących równań
+rekurencyjnych~\cite{stauffer1999, zivkovic2004}:
+
+\begin{equation}
+  \hat{\pi}_m \leftarrow \hat{\pi}_m + \alpha (o_m^{(t)} - \hat{\pi}_m)
+  \label{eq:mog2_weight_update}
+\end{equation}
+\begin{equation}
+  \hat{\vec{\mu}}_m \leftarrow \hat{\vec{\mu}}_m + o_m^{(t)} \left( \frac{\alpha}{\hat{\pi}_m} \right) \vec{\delta}_m
+  \label{eq:mog2_mean_update}
+\end{equation}
+
+\begin{equation}
+  \hat{\sigma}^2_m \leftarrow \hat{\sigma}^2_m + o_m^{(t)} \left( \frac{\alpha}{\hat{\pi}_m} \right) \left( \vec{\delta}_m^T \vec{\delta}_m - \hat{\sigma}^2_m \right)
+  \label{eq:mog2_var_update}
+\end{equation}
+
+gdzie $\vec{\delta}_m = \vec{x}(t) - \hat{\vec{\mu}}_m$, natomiast $\alpha$ określa współczynnik
+decydujący o tempie zmian parametrów rozkładu, $\alpha = 1/T$, gdzie $T$ jest rozważanym interwałem
+czasowym (liczbą klatek)~\cite{stauffer1999, zivkovic2006}. Jeśli dla danego piksela nie zostanie
+znaleziony żaden dopasowany komponent, tworzony jest nowy rozkład o~parametrach: $\hat{\pi}_{M+1} =
+  \alpha$, $\hat{\vec{\mu}}_{M+1} = \vec{x}(t)$ oraz wariancji początkowej $\hat{\sigma}_{M+1}^2 =
+  \sigma_0^2$~\cite{stauffer1999}. Jeśli liczba komponentów przekroczy dopuszczalne maksimum, rozkład
+o~najmniejszej wadze jest usuwany~\cite{stauffer1999}.
+
+\subsubsection{Ujemny rozkład a priori Dirichleta i eliminacja komponentów}
+
+W~celu automatycznego określenia optymalnej liczby komponentów $M$ dla każdego piksela, Zivkovic
+wprowadził do estymacji parametrów metodę maksymalizacji prawdopodobieństwa a posteriori (MAP)
+z~użyciem sprzężonego rozkładu a priori Dirichleta~\cite{zivkovic2004, zivkovic2006}. Zdefiniowano
+rozkład a priori w~postaci~\cite{zivkovic2004}:
+
+\begin{equation}
+  P = \prod_{m=1}^M \pi_m^{c_m}
+  \label{eq:dirichlet_prior}
+\end{equation}
+
+Kluczowym elementem tej metody jest nadanie współczynnikom rozkładu a priori wartości ujemnych
+($c_m = -c$)~\cite{zivkovic2004}. Z~matematycznego punktu widzenia ujemne współczynniki wprowadzają
+karę za nadmierną złożoność modelu, co jest ściśle powiązane z~kryterium minimalnej długości opisu
+(\textit{ang. Minimum Message Length} -- MML)~\cite{zivkovic2004}. Rozwiązanie równania MAP przy
+uwzględnieniu ujemnego rozkładu a priori prowadzi do wyznaczenia wag
+skorygowanych~\cite{zivkovic2004}:
+
+\begin{equation}
+  \hat{\pi}_m^{(t)} = \frac{1}{K} \left( \sum_{i=1}^t o_m^{(i)} - c \right)
+  \label{eq:map_weights}
+\end{equation}
+
+gdzie parametr normalizacyjny wynosi $K = t - Mc$~\cite{zivkovic2004}. Aby zapobiec zanikaniu
+wpływu kary wraz z~upływem czasu (gdy $t \to \infty$), ułamek $c/t$ zastępuje się stałą wartością
+$c_T = c/T$~\cite{zivkovic2004}. Przy założeniu, że rzeczywista liczba komponentów opisujących
+piksel jest niewielka, ostateczne równanie aktualizacji wag przyjmuje postać~\cite{zivkovic2004}:
+
+\begin{equation}
+  \hat{\pi}_m \leftarrow \hat{\pi}_m + \alpha (o_m^{(t)} - \hat{\pi}_m) - \alpha c_T
+  \label{eq:mog2_final_weight_update}
+\end{equation}
+
+Zastosowanie stałej poprawki ujemnej $-\alpha c_T$ sprawia, że wagi komponentów, które nie są
+regularnie wspierane przez nowe obserwacje, sukcesywnie maleją~\cite{zivkovic2004}. Gdy waga danego
+komponentu osiągnie wartość ujemną, zostaje on trwale usunięty z~mieszaniny~\cite{zivkovic2004}.
+W~ten sposób piksele reprezentujące stabilne elementy tła są opisywane zaledwie jednym rozkładem
+Gaussa, natomiast piksele w~obszarach o~złożonej dynamice (np. migoczące światła, falująca
+roślinność) utrzymują większą liczbę komponentów~\cite{zivkovic2004, zivkovic2006}.
+
+\subsection{KNN \textit{(ang. K-nearest Neighbors)}}
+
+Algorytm KNN w kontekście odejmowania tła stanowi alternatywne, nieparametryczne podejście do
+modelowania rozkładu prawdopodobieństwa pikseli. W podejściu nieparametrycznym funkcja gęstości
+jest szacowana bezpośrednio na podstawie danych historycznych, bez zakładania konkretnego kształtu
+rozkładu~\cite{elgammal2000}. Podstawową techniką wykorzystywaną w tym podejściu jest estymacja
+gęstości jądrowej (KDE, \textit{ang. Kernel Density Estimation}), która wymaga przechowywania
+zbioru $N$ próbek historycznych $\vec{x}_n$ reprezentujących wcześniej obserwowane wartości
+pikseli~\cite{elgammal2000}.
+
+\subsubsection{Estymacja gęstości jądrowej z użyciem estymatora balonowego}
+
+Podstawowy estymator Parzena–Rosenblatta szacuje gęstość prawdopodobieństwa punktu $\vec{x}$ w
+$d$-wymiarowej przestrzeni cech na podstawie $N$ próbek historycznych $\vec{x}_n$ jako:
+
+\begin{equation}
+  \hat{p}(\vec{x}) = \frac{1}{N h^d} \sum_{n=1}^{N} K\!\left(\frac{\vec{x} - \vec{x}_n}{h}\right)
+\end{equation}
+
+gdzie $K(\cdot)$ jest funkcją jądrową, a $h$ stałą szerokością pasma. W kontekście odejmowania tła
+szerokość pasma decyduje o wrażliwości klasyfikacji: jeżeli piksel znajduje się poza promieniem
+wyznaczonym przez jądro, zostaje zaklasyfikowany jako pierwszy plan~\cite{zivkovic2006}. Użycie
+stałej szerokości pasma może generować błędy w obszarach o zróżnicowanej gęstości danych —
+nadmierne wygładzenie w regionach gęstych i niedoszacowanie w rzadkich~\cite{terrell1992}.
+
+Zastosowanie estymatora balonowego (\textit{ang. balloon estimator})~\cite{terrell1992} rozwiązuje
+ten problem poprzez uzależnienie szerokości jądra $h$ od lokalnej gęstości w punkcie
+estymacji~$\vec{x}$. Szerokość okna dobiera się odwrotnie proporcjonalnie do lokalnej gęstości:
+
+\begin{equation}
+  h(\vec{x}) = \frac{k}{\left[N\,\hat{p}(\vec{x})\right]^{1/d}}
+\end{equation}
+
+Wówczas estymowana gęstość prawdopodobieństwa wyraża się wzorem:
+
+\begin{equation}
+  \hat{p}(\vec{x}) \approx \frac{1}{N \cdot h(\vec{x})^d}
+  \sum_{n=1}^{N} K\!\left(\frac{\vec{x} - \vec{x}_n}{h(\vec{x})}\right)
+\end{equation}
+
+Dla optymalizacji wydajności obliczeniowej w systemach czasu rzeczywistego jako funkcję jądrową
+$K(u)$ stosuje się jądro jednostajne (prostokątne)~\cite{terrell1992}. Wówczas estymacja gęstości
+sprowadza się do zliczenia próbek $\vec{x}_n$ leżących wewnątrz sfery o promieniu $h(\vec{x})$
+wyznaczonym przez odległość do $k$-tego sąsiada~\cite{zivkovic2006}:
+
+\begin{equation}
+  \hat{p}(\vec{x}) \approx \frac{k}{N \cdot V_d \cdot h(\vec{x})^d}
+\end{equation}
+
+gdzie $V_d$ oznacza objętość jednostkowej kuli w przestrzeni $d$-wymiarowej. Takie podejście
+drastycznie skraca czas obliczeń w porównaniu z jądrem gaussowskim, przy zachowaniu adaptacyjności
+szerokości pasma~\cite{zivkovic2006, mittal2004}.
+
+\subsubsection{Metoda k-najbliższych sąsiadów w przestrzeni barw RGB}
+
+W praktycznej implementacji algorytmu KNN klasyfikacja nowego piksela $\vec{x}(t)$ opiera się na
+następującym schemacie decyzyjnym~\cite{zivkovic2006}:
+
+\begin{enumerate}
+  \item Zakłada się, że piksel jest reprezentowany jako wektor w przestrzeni barw RGB: $\vec{x}(t) =
+          [R(t),\, G(t),\, B(t)]^T$.
+
+  \item Oblicza się odległości euklidesowe $d_n$ między $\vec{x}(t)$ a każdą z $N$ próbek zgromadzonych w
+        buforze historycznym tego piksela $\mathcal{X} = \{\vec{x}_1, \dots,
+          \vec{x}_N\}$~\cite{zivkovic2006, cucchiara2003}.
+
+  \item Zlicza się liczbę próbek $k^*$, dla których $d_n$ jest mniejsza od progu $D_{thr}$ (w OpenCV
+        parametr \texttt{dist2Threshold} przechowuje kwadrat tej odległości):
+        \begin{equation}
+          k^* = \sum_{n=1}^{N} \mathbf{1}\!\left[d\!\left(\vec{x}(t),\,\vec{x}_n\right) < D_{thr}\right]
+        \end{equation}
+        gdzie $\mathbf{1}[\cdot]$ oznacza funkcję wskaźnikową. Próbki spełniające ten warunek
+        mieszczą się wewnątrz sfery o promieniu $D_{thr}$ wokół $\vec{x}(t)$~\cite{prati2003,
+          zivkovic2006, opencv2025}.
+
+  \item Jeśli $k^* \ge k$, piksel zostaje zaklasyfikowany jako tło~\cite{zivkovic2006, opencv2025}. W
+        przeciwnym razie jest oznaczany jako pierwszy plan~\cite{zivkovic2006, opencv2025}.
+\end{enumerate}
+
+Aktualizacja modelu w algorytmie KNN zachodzi w sposób ciągły — nowa próbka piksela zastępuje
+najstarszą próbkę w buforze (schemat FIFO). Dzięki temu model stopniowo dostosowuje się do wolnych
+zmian warunków oświetleniowych, takich jak ruch chmur czy dynamika cieni~\cite{zivkovic2006} .
+
+\subsection{Ocena efektywności algorytmów}
+
+Wyniki segmentacji pierwszego planu weryfikuje się przez porównanie wygenerowanej maski binarnej
+z~maską referencyjną (\textit{ang. ground truth}) na poziomie pikseli~\cite{cdnet2014}. Każdy
+piksel klasyfikowany jest jako jeden z~czterech przypadków: prawdziwy pozytyw (TP -- piksel
+pierwszego planu wykryty poprawnie), fałszywy pozytyw (FP -- piksel tła błędnie oznaczony jako
+pierwszy plan), prawdziwy negatyw (TN -- piksel tła wykryty poprawnie) oraz fałszywy negatyw (FN --
+piksel pierwszego planu pominięty przez algorytm). Na tej podstawie wyznacza się następujące
+metryki~\cite{cdnet2014}:
+
+\begin{itemize}
+  \item \textbf{Czułość} \textit{(ang. Recall / True Positive Rate)} — stosunek
+        poprawnie wykrytych pikseli pierwszego planu do wszystkich pikseli pierwszego
+        planu w masce referencyjnej:
+        \begin{equation}
+          \mathrm{Recall} = \frac{TP}{TP + FN}
+        \end{equation}
+
+  \item \textbf{Swoistość} \textit{(ang. Specificity / True Negative Rate)} — stosunek
+        poprawnie sklasyfikowanych pikseli tła do wszystkich pikseli tła w~masce
+        referencyjnej:
+        \begin{equation}
+          \mathrm{Specificity} = \frac{TN}{TN + FP}
+        \end{equation}
+
+  \item \textbf{Precyzja} \textit{(ang. Precision)} — stosunek poprawnie wykrytych
+        pikseli pierwszego planu do wszystkich pikseli oznaczonych przez algorytm jako
+        pierwszy plan:
+        \begin{equation}
+          \mathrm{Precision} = \frac{TP}{TP + FP}
+        \end{equation}
+
+  \item \textbf{Miara F1} \textit{(ang. F1-score)} — średnia harmoniczna precyzji
+        i~czułości, zapewniająca zrównoważoną ocenę przy nierównomiernym rozkładzie
+        klas:
+        \begin{equation}
+          F_1 = 2 \cdot \frac{\mathrm{Precision} \cdot \mathrm{Recall}}
+          {\mathrm{Precision} + \mathrm{Recall}}
+        \end{equation}
+
+  \item \textbf{IoU} \textit{(ang. Intersection over Union)} — stosunek pola
+        przecięcia maski wykrytej i~referencyjnej do pola ich sumy. W~kontekście
+        ewaluacji BGS operuje się na maskach binarnych, nie na ramkach
+        otaczających~\cite{cdnet2014}:
+        \begin{equation}
+          \mathrm{IoU} = \frac{TP}{TP + FP + FN}
+        \end{equation}
+
+  \item \textbf{PWC} \textit{(ang. Percentage of Wrong Classifications)} — odsetek
+        błędnie sklasyfikowanych pikseli względem całkowitej liczby pikseli w~sekwencji;
+        stosowany jako metryka syntetyczna w~benchmarku CDnet~\cite{cdnet2014}:
+        \begin{equation}
+          \mathrm{PWC} = 100 \cdot \frac{FP + FN}{TP + FP + TN + FN}
+        \end{equation}
+\end{itemize}
+
+Wymienione metryki są standardowo stosowane w~benchmarku CDnet 2014~\cite{cdnet2014}, który stanowi
+punkt odniesienia dla porównania algorytmów BGS w~niniejszej pracy. Metryki oceny śledzenia wielu
+obiektów (MOTA, HOTA, IDF1) oraz reidentyfikacji (Rank-1/CMC) zostają omówione w~kolejnych
+podrozdziałach poświęconych odpowiednio modułom detekcji i~śledzenia.
+
+\subsection{Analiza porównawcza i ewaluacja efektywności}
+
+\subsubsection{Porównanie wydajności algorytmów BGS w trudnych warunkach atmosferycznych}
+
+Efektywność algorytmów odejmowania tła zależy od charakterystyki badanej sceny oraz rodzaju
+zakłóceń środowiskowych~\cite{bouwmans2014}. Tabela~\ref{tab:iou_bgs_comparison} przedstawia
+średnie wartości współczynnika IoU uzyskane przez wybrane algorytmy BGS w~badaniach porównawczych
+dla różnego rodzaju zakłóceń atmosferycznych wideo~\cite{karbowiak2022}.
+
+\begin{table}[htbp]
+  \centering
+  \caption{Średnie wartości współczynnika IoU wybranych algorytmów BGS. Żródło: opracowanie własne na podstawie danych z~\cite{karbowiak2022}.}
+  \label{tab:iou_bgs_comparison}
+  \begin{tabular}{|l|c|c|c|c|c|c|}
+    \hline
+    \textbf{Środowisko / Warunki}
+            & \textbf{CNT} & \textbf{KNN} & \textbf{MOG} & \textbf{MOG2} & \textbf{GMG} & \textbf{SOM} \\ \hline
+    Śnieg   & 0,41         & 0,38         & 0,44         & 0,25          & 0,42         & 0,52         \\ \hline
+    Wiatr   & 0,13         & 0,13         & 0,33         & 0,11          & 0,12         & 0,29         \\ \hline
+    Deszcz  & 0,17         & 0,14         & 0,37         & 0,10          & 0,31         & 0,25         \\ \hline
+    Średnia & 0,28         & 0,32         & 0,39         & 0,25          & 0,42         & 0,47         \\ \hline
+  \end{tabular}
+\end{table}
+
+Analiza wyników przedstawionych w~Tabeli~\ref{tab:iou_bgs_comparison} pozwala na sformułowanie
+kilku obserwacji dotyczących zachowania algorytmów BGS w~trudnych warunkach atmosferycznych.
+
+Najsłabszą i~najbardziej równomierną odporność na zakłócenia środowiskowe wykazują algorytmy KNN
+oraz MOG2 -- oba uzyskują najniższe wartości IoU zarówno przy wietrze (0,13 i~0,11), jak i~przy
+deszczu (0,14 i~0,10). Algorytm MOG z~kolei wykazuje zaskakująco wysoką odporność w~warunkach
+wietrznych (IoU~=~0,33) oraz deszczowych (IoU~=~0,37), co wynika z~jego większej bezwładności
+modelu -- stała liczba komponentów gaussowskich wolniej absorbuje szybkie
+zakłócenia~\cite{stauffer1999}.
+
+Spośród wszystkich badanych metod najwyższą średnią skuteczność osiąga SOM (IoU~=~0,47),
+a~najniższą -- MOG2 (IoU~=~0,25). Algorytm SOM (\textit{ang. Self-Organizing Map}) modeluje tło za
+pomocą samoorganizacji poprzez szczutczną sieć neuronową\cite{karbowiak2022}. Dzięki temu
+skuteczniej radzi sobie ze złożonymi problemami, takimi jak ruszające się tło czy zmiany w
+oświetleniu~\cite{karbowiak2022}.
+
+Algorytm GMG osiąga wysoką średnią (IoU~=~0,42) dzięki bayesowskiemu modelowi tła budowanemu na
+podstawie pierwszych klatek sekwencji (domyślnie 120 klatek w~OpenCV). Wysoka skuteczność przy
+śniegu (IoU~=~0,42) jest efektem dobrego odwzorowania statystycznej zmienności tła w~fazie
+inicjalizacji. Metoda ta ma jednak istotne ograniczenie -- wymaga stabilnej fazy uczenia i~słabo
+radzi sobie z~dynamicznymi scenami od pierwszej klatki~\cite{karbowiak2022}.
+
+Algorytm CNT (\textit{ang. Counter}, \textit{ang. Count of Non-stationary Targets}) opiera się na
+zliczaniu, ile razy wartość piksela zmieniła się w danym czasie. Jest to metoda prosta
+obliczeniowo, osiągająca zadowalające wyniki dla śniegu (IoU~=~0,41), jest zawodna przy wietrze
+i~deszczu (IoU~=~0,13 i~0,17).
+
+Pomimo że algorytmy SOM, GMG i~CNT uzyskują wyższe wartości IoU od KNN i~MOG2, w~niniejszej pracy
+zdecydowano się na implementację tych ostatnich. Wynika to z~ich natywnej dostępności i~pełnego
+wsparcia w~bibliotece OpenCV, niskiego zapotrzebowania na zasoby obliczeniowe niezbędnego
+w~przetwarzaniu strumienia wideo w~czasie rzeczywistym, a~także szczegółowej dokumentacji
+i~ugruntowanej pozycji w~literaturze~\cite{zivkovic2006}. Algorytmy SOM i~GMG wymagają odpowiednio
+dłuższej fazy inicjalizacji lub wyższych zasobów, co utrudnia ich zastosowanie w~scenariuszach
+z~dynamicznie zmieniającym się tłem bez etapu wstępnego uczenia.
+
+\subsubsection{Wydajność obliczeniowa, ograniczenia sprzętowe i zjawisko dryfu tła}
+
+W systemach czasu rzeczywistego wydajność obliczeniowa jest istotnym czynnikiem przy wdrażaniu
+oprogramowania\cite{bouwmans2014}. MOG2, dzięki dynamicznemu doborowi liczby komponentów
+gaussowskich opartemu na kryterium MML \textit{(ang. Minimum Message Length)}~\cite{zivkovic2004},
+charakteryzuje się niskim zużyciem pamięci RAM. Pozwala to na jego stosowanie w~architekturach
+wielokamerowych na platformach wbudowanych~\cite{waghmare2026}.
+
+Najpoważniejszą wadą klasycznych algorytmów BGS, w~tym MOG2 i~KNN, jest podatność na zjawisko dryfu
+modelu tła (\textit{ang. background drift})~\cite{waghmare2026}. Jeżeli obiekt pierwszego plany
+pozostanie nieruchomy, w ciągu 100 klatek może zostać zaklasyfikowany jako część
+tła~\cite{waghmare2026}. Skutkuje to fragmentacją ścieżki śledzenia i~utratą ciągłości detekcji.
+Dlatego na trudnych zbiorach testowych samodzielne algorytmy BGS osiągają niską czułość
+detekcji~\cite{waghmare2026}.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\section{Detekcja obiektów oparta na głębokim uczeniu (Deep Learning)}
+
+Przed upowszechnieniem wielowarstwowych sieci neuronowych, systemy detekcji obiektów opierały się
+na ręcznie projektowanych cechach wizualnych \textit{(ang. hand-crafted features)}, które były
+następnie klasyfikowane za pomocą tradycyjnych algorytmów uczenia maszynowego. Jednym
+z~najważniejszych rozwiązań w~obszarze detekcji obiektów w~czasie rzeczywistym stał się algorytm
+Viola-Jones, pierwotnie opracowany do detekcji twarzy. Metoda ta opiera się na trzech kluczowych
+koncepcjach: reprezentacji obrazu całkowego \textit{(ang. Integral Image)}, wyznaczaniu prostych
+cech \textit{(ang. Haar-like features)} oraz kaskadowej strukturze klasyfikatorów opartej na
+algorytmie AdaBoost \cite{viola2001}. Zastosowanie obrazu całkowego umożliwiło obliczanie sum
+jasności pikseli wewnątrz prostokątnych obszarów w czasie stałym $O(1)$, niezależnie od skali.
+Pomimo rewolucyjnej szybkości działania, detektor Viola-Jones wykazywał niską odporność na rotacje
+obiektów w przestrzeni trójwymiarowej, okluzje oraz gwałtowne zmiany kontrastu i oświetlenia sceny
+\cite{viola2001}. Kolejny przełomowy algorytm, służący do detekcji sylwetek ludzkich, to metoda
+HOG~+~SVM. Algorytm opierał się na histogramach zorientowanych gradientów liczonych w komórkach
+obrazu i normalizowanych lokalnie w nakładających się blokach, co poprawiało odporność na zmiany
+kontrastu \cite{dalal2005}. Autorzy wykazali, że taka reprezentacja znacznie przewyższa
+wcześniejsze zestawy cech w zadaniu detekcji ludzi. Ograniczeniem podejścia pozostawała m.in.
+podatność na deformacje postawy oraz koszt obliczeniowy wynikający ze skanowania obrazu metodą
+przesuwanego okna \cite{dalal2005}.
+
+\subsection{Splotowe sieci neuronowe (CNN) i detektory dwuetapowe}
+Rok 2012 przyniósł zasadnicze zmiany w wizji komputerowej wraz z sukcesem głębokiej sieci splotowej
+AlexNet w konkursie ILSVRC \cite{krizhevsky2012imagenet}. Model ten, zbudowany z pięciu warstw
+splotowych i trzech warstw w pełni połączonych, pokazał, że sieci neuronowe mogą samodzielnie uczyć
+się użytecznych cech obrazu lepiej niż metody ręcznie projektowane \cite{krizhevsky2012imagenet}.
+Zastosowanie funkcji ReLU oraz technik regularizacji, takich jak dropout, umożliwiło skuteczne
+trenowanie dużych modeli na procesorach graficznych (GPU).
+
+Zastosowanie sieci splotowych do lokalizacji obiektów doprowadziło do powstania detektorów
+dwuetapowych. W pierwszym kroku system wskazywał możliwe miejsca występowania obiektu, a w drugim
+klasyfikował je i doprecyzowywał położenie. Pierwszym istotnym modelem był R-CNN, który łączył
+tradycyjne generowanie propozycji regionów, na przykład metodą Selective Search, z siecią CNN
+analizującą każdy region osobno \cite{girshick2014rich}. Było to jednak wolne, ponieważ ten sam
+fragment obrazu był przetwarzany wiele razy. Fast R-CNN przyspieszył ten proces, obliczając cechy
+dla całego obrazu tylko raz i wykorzystując warstwę ROI Pooling do pobierania informacji dla
+proponowanych regionów \cite{girshick2015fast}. Dalszym ulepszeniem był Faster R-CNN, który
+zastąpił Selective Search siecią RPN, czyli modułem proponującym regiony bezpośrednio na podstawie
+map cech \cite{ren2015faster}. Dzięki temu model stał się znacznie szybszy i bardzo dokładny, choć
+nie zawsze osiągał pełny czas rzeczywisty.
+
+\subsection{Detektory jednoetapowe}
+
+Modele dwuetapowe, mimo wysokiej dokładności, często były zbyt wolne do zastosowań wymagających
+szybkiej reakcji, takich jak monitoring czasu rzeczywistego czy systemy wbudowane. Odpowiadając na
+tę potrzebę,powstały detektory jednoetapowe (ang. \textit{one-stage detectors}), które bezpośrednio
+przekształcają obraz wejściowy w predykcje klas oraz współrzędnych ramek otaczających, bez osobnego
+etapu generowania propozycji regionów.
+
+Jednym z najważniejszych algorytmów tej grupy stał się YOLO \textit{(ang. You Only Look Once)}, w
+którym potraktowano detekcję obiektów jako pojedynczy problem regresji realizowany przez jedną sieć
+neuronową w jednym przebiegu obrazu (\textit{single forward pass}) \cite{redmon2016yolo}. Dzięki
+temu możliwe stało się wykrywanie obiektów w czasie zbliżonym do rzeczywistego, przy zachowaniu
+dobrej skuteczności. Kolejne wersje tej rodziny rozwijały to podejście, poprawiając kompromis
+między szybkością a dokładnością. YOLOv7 wprowadził architekturę E-ELAN \textit{(ang. Extended
+  Efficient Layer Aggregation Network)}, która usprawniła przepływ informacji w sieci, oraz koncepcję
+\textit{compound scaling}, pozwalającą lepiej dobierać rozmiar modelu do możliwości obliczeniowych.
+Autorzy zastosowali także tzw. \textit{bag-of-freebies}, czyli zestaw ulepszeń poprawiających
+jakość uczenia bez zwiększania kosztu inferencji \cite{wang2023yolov7}. YOLOv8 przeszedł na
+podejście bezkotwicowe (\textit{anchor-free}), rezygnując z wcześniej definiowanych ramek bazowych,
+oraz zastosował rozdzieloną głowę detekcyjną \textit{(ang. split head)}, w której klasyfikacja i
+regresja są wykonywane osobno \cite{ultralytics2023yolov8}. Z kolei YOLOv9 zaproponował rozwiązania
+mające ograniczać utratę informacji w głębokich sieciach oraz poprawiać przepływ gradientu, co ma
+szczególne znaczenie w przypadku małych i trudnych do wykrycia obiektów. \cite{wang2024yolov9}.
+
+Alternatywnym podejściem do detekcji jednoetapowej jest SSD \textit{(ang. Single Shot MultiBox
+  Detector)}. Metoda ta wykorzystuje kilka map cech o różnych rozdzielczościach, dzięki czemu lepiej
+radzi sobie z obiektami o zróżnicowanych rozmiarach \cite{liu2016ssd}. W porównaniu z modelami
+dwuetapowymi SSD oferował prostszą architekturę i większą szybkość działania, choć początkowo
+często ustępował im dokładnością.
+
+Głównym problemem detektorów jednoetapowych była jednak silna nierównowaga klasowa: w obrazie
+dominuje tło, a obiekty zajmują tylko niewielką część danych. Prowadziło to do sytuacji, w której
+model był zbyt mocno uczony rozpoznawania tła, a zbyt słabo skupiał się na rzeczywistych obiektach
+\cite{lin2017focal}. Problem ten skutecznie złagodził RetinaNet, który wprowadził funkcję straty
+Focal Loss:
+\[
+  FL(p_t)=-\alpha_t(1-p_t)^\gamma\log(p_t)
+\]
+Czynnik modulujący $(1 - p_t)^\gamma$ (gdzie $\gamma$ to parametr skupienia) sprawia, że w tym
+ujęciu łatwe przykłady, czyli takie, które model klasyfikuje z dużą pewnością, otrzymują mniejszą
+wagę w procesie uczenia. Dzięki temu gradient jest bardziej skoncentrowany na trudnych przykładach
+i na obiektach pierwszoplanowych, co poprawia skuteczność detekcji bez rezygnacji z szybkości
+charakterystycznej dla podejścia jednoetapowego \cite{lin2017focal}.
+
+\subsection{Transformery w detekcji obiektów}
+
+Wprowadzenie mechanizmów uwagi, znanych wcześniej głównie z przetwarzania języka naturalnego,
+doprowadziło do powstania architektury DETR (\textit{Detection Transformer}). Model ten traktuje
+detekcję obiektów jako problem bezpośredniego przewidywania zbioru wyników (\textit{direct set
+  prediction}). W praktyce oznacza to, że zamiast stosować kotwice (\textit{anchors}) i dodatkowy
+etap usuwania nadmiarowych ramek NMS \textit{(ang. Non-Maximum Suppression)}, DETR łączy ekstraktor
+cech oparty na sieci splotowej z enkoderem i dekoderem Transformer oraz mechanizmem dopasowania
+dwudzielnego opartym na algorytmie węgierskim \cite{carion2020end}.
+
+Mimo eleganckiej konstrukcji oryginalny DETR miał istotne ograniczenia. Model uczył się bardzo
+wolno, wymagał dużych zasobów obliczeniowych i osiągał słabsze wyniki w detekcji małych obiektów.
+Odpowiedzią na te problemy był Deformable DETR. Zastosowano w nim odkształcalną uwagę
+(\textit{deformable attention}), która zamiast analizować cały obraz, skupia się na niewielkiej
+liczbie punktów wybranych wokół punktów referencyjnych. Dzięki temu model lepiej wykorzystuje cechy
+wieloskalowe, szybciej się uczy i radzi sobie skuteczniej z obiektami o różnych rozmiarach
+\cite{zhu2021deformable}.
+
+Nowszym rozwinięciem tej linii jest RT-DETR (\textit{Real-Time Detection Transformer}),
+zaprojektowany z myślą o zastosowaniach czasu rzeczywistego. Model ten łączy wydajny enkoder
+hybrydowy z mechanizmem wyboru najbardziej obiecujących zapytań dekodera, co pozwala ograniczyć
+koszty obliczeniowe i zachować wysoką szybkość działania. W odróżnieniu od klasycznych detektorów
+opartych na CNN RT-DETR dąży do osiągnięcia bardzo dobrego kompromisu między dokładnością a czasem
+inferencji, a przy tym eliminuje potrzebę stosowania NMS jako osobnego etapu przetwarzania
+\cite{zhao2024detrs}.
+
+\subsection{Dane treningowe a problem luki domenowej}
+
+Skuteczność głębokich modeli detekcji zależy od wielkości i jakości danych uczących. Modele są
+zazwyczaj trenowane na dużych, ogólnych zbiorach badawczych, takich jak MS COCO lub ImageNet.
+Jednak bezpośrednie przeniesienie modelu wytrenowanego na danych syntetycznych do rzeczywistego
+środowiska przemysłowego lub systemu CCTV zawodzi, ujawniając problem luki domenowej \textit{(ang.
+  domain shift)}\cite{he2024}.
+
+Luka domenowa wynika z różnic w charakterystyce obrazów między zbiorem treningowym a rzeczywistym
+środowiskiem.
+\begin{itemize}
+  \item Zdjęcia w zbiorach akademickich najczęściej wykonywane są z perspektywy na wysokości oczu, kamery
+        monitoringu są zwykle umieszczone znacznie wyżej. Powoduje to zniekształcenia perspektywy, które
+        wpływają na kształt i rozmiar obiektów, a także na ich wzajemne relacje przestrzenne.
+  \item Kamery CCTV charakteryzują się specyficznymi zniekształceniami optycznymi (np. obiektywy
+        szerokokątne typu rybie oko), silną kompresją stratną strumienia wideo oraz wysokim poziomem szumów
+        matrycy w warunkach nocnych.
+  \item Zbiory testowe rzadko reprezentują skrajne zjawiska pogodowe (silny deszcz, śnieżyca, mgła,
+        oślepiające słońce generujące głębokie cienie), które w rzeczywistym monitoringu zewnętrznym
+        występują powszechnie \cite{he2024}.
+\end{itemize}
+
+Najczęściej stosowane techniki niwelowania luki domenowej w detekcji obiektów można podzielić na
+trzy główne grupy: translację domen, samouczenie z pseudoetykietami oraz dopasowanie cech między
+domenami. Pierwsza grupa polega na przekształcaniu danych źródłowych tak, aby bardziej przypominały
+dane docelowe, zwykle przy użyciu modeli generatywnych. Wiąże się to jednak z utratą informacji i
+wysoką złożonością obliczeniową. \cite{he2024}.
+
+Metody samouczenia \textit{(ang. self-training)}, w których model uczony jest na danych źródłowych
+z etykietami oraz na danych docelowych opisanych pseudoetykietami generowanymi przez model
+nauczyciela. Jego skuteczność zależy jednak od jakości pseudoetykiet, dlatego wiele nowszych metod
+wprowadza mechanizmy ich selekcji, ważenia lub filtrowania \cite{he2024}.
+
+Szeroko stosowane metody dopasowania cech (\textit{domain alignment}), dążą do zmniejszenia różnic
+pomiędzy rozkładami cech w domenie źródłowej i docelowej. W klasycznych rozwiązaniach wykorzystuje
+się do tego sieci przeciwstawne, w których dyskryminator próbuje odróżnić cechy pochodzące z obu
+domen, a ekstraktor cech uczy się tworzyć reprezentacje nieodróżnialne z punktu widzenia domeny. W
+detekcji obiektów takie dopasowanie może zachodzić na poziomie obrazu, regionu lub pojedynczej
+instancji \cite{chen2018, he2024}.
+
+Nowsze badania wskazują jednak, że globalne wyrównywanie cech na poziomie całego obrazu szkodzi
+precyzji lokalizacji detektorów, gdyż prowadzi do transferu informacji z nieistotnych obszarów tła
+\cite{he2024}. W związku z tym wprowadzono zaawansowane strategie adaptacji różnicowej (np. UFOA –
+Uncertainty-based Foreground-Oriented Alignment) \cite{he2024}, które selektywnie nadają wyższy
+priorytet obszarom reprezentującym obiekty pierwszoplanowe.
+
+\subsection{Detekcja w trudnych warunkach}
+
+Wdrożenie skutecznych algorytmów detekcji obiektów w systemach monitoringu wymaga wysokiej
+odporności modeli na zakłócenia. Do najczęstszych problemów należą okluzje, gwałtowne zmiany
+oświetlenia oraz niska rozdzielczość małych lub odległych obiektów \cite{nikouei2025, cheng2026}.
+
+Techniki ograniczające wpływ okluzji obejmują między innymi:
+\begin{itemize}
+  \item \textbf{Generatywne warstwy kompozycyjne} – w tym podejściu klasyczne głowice klasyfikacyjne zastępowane są strukturą generatywną, która potrafi wnioskować o niewidocznych częściach obiektu na podstawie relacji przestrzennych między jego widocznymi fragmentami. Przykładem takiego rozwiązania jest model CompositionalNet \cite{cheng2026}.
+  \item \textbf{Algorytmy głosowania częściowego \textit{(ang. part-based voting)}} – model uczy się niezależnych reprezentacji poszczególnych części obiektu, a następnie szacuje położenie całego obiektu na podstawie wykrytych elementów \cite{cheng2026}. W detekcji pieszych może to oznaczać osobne wykrywanie głowy, ramion i nóg, a następnie wyznaczenie położenia całej sylwetki.
+  \item \textbf{Łączenie wielu widoków i wspólne wnioskowanie} – w systemach wielokamerowych obiekt zasłonięty z jednej perspektywy może być dobrze widoczny z innej. Połączenie predykcji z kilku sąsiadujących kamer pozwala trafniej odtworzyć położenie obiektu, nawet jeśli w pojedynczym obrazie jest on silnie zasłonięty \cite{cheng2026}.
+\end{itemize}
+
+Systemy CCTV działają przez całą dobę, dlatego są narażone na zmienne warunki oświetleniowe
+utrudniające detekcję. Problem stanowi zarówno intensywne światło słoneczne powodujące głębokie
+cienie, jak i nagłe prześwietlenia, na przykład od reflektorów samochodowych w nocy, a także bardzo
+słabe oświetlenie po zmroku \cite{nikouei2025}. Dodatkowo opady atmosferyczne, takie jak deszcz i
+śnieg, wprowadzają zakłócenia do obrazu i osłabiają składowe wysokoczęstotliwościowe, co prowadzi
+do rozmycia krawędzi obiektów \cite{wille2026}. Jednym ze sposobów ograniczania utraty detali są
+moduły o zmiennym polu recepcyjnym, takie jak RepHELAN, które wykorzystują heterogeniczne
+konwolucje do zwiększania efektywnego pola recepcyjnego bez pogorszenia reprezentacji małych
+obiektów \cite{yang2024}. Z kolei w trudnych warunkach oświetleniowych stosuje się mechanizmy uwagi
+wieloskalowej, na przykład LSKA (\textit{Large Separable Kernel Attention}), które mogą
+adaptacyjnie ograniczać wpływ lokalnych prześwietleń i koncentrować się na bardziej stabilnych
+zależnościach przestrzennych \cite{tang2026}.
+
+W rozległych scenach monitoringu, takich jak place miejskie, skrzyżowania czy parkingi, obiekty
+znajdujące się daleko od kamery klasyfikowane są jako małe jeżeli zajmują na obraziemniej niż $32
+  \times 32$, a~często stanowią nawet mniej niż $20 \times 20$ pikseli \cite{nikouei2025}.
+W~klasycznych sieciach konwolucyjnych kolejne operacje zmniejszania rozdzielczości, realizowane na
+przykład przez konwolucje ze skokiem lub warstwy MaxPooling, mogą prowadzić do utraty informacji o
+tak małych obiektach jeszcze przed przekazaniem cech do głowic predykcyjnych \cite{nikouei2025}.
+Aby temu przeciwdziałać, nowoczesne architektury wykorzystują mechanizmy wzmacniające sygnał małych
+obiektów. Jednym z nich są gęste połączenia wspomagające, takie jak moduł SAF (\textit{Superficial
+  Assisted Fusion}) stosowany w części agregującej cechy (\textit{neck}), który przekazuje do
+głębszych warstw informacje o wysokiej rozdzielczości przestrzennej z początkowych etapów
+ekstrakcji cech \cite{yang2024}. Innym rozwiązaniem jest regresja dystrybucyjna, na przykład DFL
+(\textit{Distribution Focal Loss}) wykorzystywana w modelach YOLOv8 i YOLOv9, w której współrzędne
+ramki nie są modelowane jako pojedyncze wartości, lecz jako rozkłady prawdopodobieństwa wokół jej
+krawędzi. Pozwala to precyzyjniej opisać niepewność lokalizacji małego obiektu, także na poziomie
+subpikselowym \cite{yang2024}.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\section{Śledzenie wielu obiektów w pojedynczej kamerze}
+
+Śledzenie wielu obiektów (Multiple Object Tracking – MOT) w strumieniu wideo z pojedynczej kamery polega na jednoczesnym szacowaniu pozycji wielu poruszających się obiektów w czasie oraz na zachowaniu ich spójnej tożsamości w kolejnych klatkach sekwencji obrazów. Zadanie to wymaga rozwiązania trzech podstawowych problemów:
+\begin{itemize}
+  \item \textbf{Asocjacji danych} \textit{(ang. data association)} - powiązania niezależnych detekcji tych samych obiektów na przestrzeni kolejnych klatek wideo i przypisania im stałego, unikalnego identyfikatora ang. \textit{(ang. track ID)} \cite{bewley2016}.
+  \item \textbf{Inicjalizacji nowych ścieżek} — wykrywania momentu wejścia nowego, dotąd nieśledzonego obiektu w pole widzenia kamery i utworzenia dla niego nowej trajektorii \cite{bewley2016}.
+  \item \textbf{Terminacji ścieżek} — identyfikacji momentu, w którym obiekt opuszcza monitorowaną scenę (lub zostaje długotrwale zasłonięty), w celu zakończenia aktualizacji jego trajektorii. Operacja ta zapobiega nieograniczonemu wzrostowi liczby śledzonych obiektów oraz redukuje błędy lokalizacji wynikające z długotrwałej predykcji ruchu \cite{bewley2016}.
+\end{itemize}
+\subsection{Paradygmat śledzenia ścieżek \textit{(ang. tracking-by-detection)}}
+Od około 2015 roku w dziedzinie wieloobiektowego śledzenia dominuje paradygmat śledzenia przez detekcję \textit{(ang. tracking-by-detection lub detection-based tracking)} – DBT \cite{wojke2017}. Podejście to opiera się na rozdzieleniu modułu lokalizacji przestrzennej od modułu odpowiedzialnego za utrzymanie tożsamości. Przepływ informacji realizowany jest kaskadowo: najpierw algorytm detekcyjny (np. głęboka sieć neuronowa z rodziny YOLO) niezależnie lokalizuje obiekty w każdej klatce wideo, a następnie moduł śledzący łączy te dyskretne predykcje w ciągłe trajektorie \cite{bewley2016, wojke2017}. Taka separacja w architekturze systemu sprawia, że precyzja i czułość całego systemu MOT są bezpośrednio ograniczone przez jakość działania zastosowanego detektora bazowego \cite{bewley2016}.
+
+\subsection{Metody predykcji stanu i algorytmy skojarzenia}
+Aby efektywnie połączyć detekcje z klatki $t$ z obiektami w klatce $t+1$, nowoczesne systemy
+śledzenia wykorzystują kombinację filtrów estymacji stanu oraz algorytmów optymalizacji dyskretnej.
+
+\subsubsection{Filtr Kalmana}
+Do modelowania dynamiki ruchu obiektów stosuje się liniowy filtr Kalmana \cite{kalman1960,
+  bewley2016}. Zakładając model ruchu o stałej prędkości na płaszczyźnie obrazu, filtr ten przewiduje
+przyszłą pozycję i wymiary ramki ograniczającej obiekt w kolejnej klatce wideo. Pozwala to zawęzić
+obszar poszukiwań i stabilizuje proces śledzenia nawet w przypadku chwilowych zakłóceń
+\cite{bewley2016}.
+
+\subsubsection{Algorytm węgierski}
+Powiązanie przewidzianych pozycji z nowymi detekcjami formułuje się jako problem skojarzenia w
+grafie dwudzielnym (\textit{ang. bipartite matching}) o minimalnym koszcie \cite{bewley2016}.
+Optymalne rozwiązanie tego zadania zapewnia algorytm węgierski \cite{kuhn1955, bewley2016}. Metoda
+ta szuka optymalnych par w relacji jeden do jednego dla przewidzianych trajektorii i nowych
+detekcji, tak aby zminimalizować łączny koszt – np. odległość opartą na stopniu nakładania się
+ramek (IoU) \cite{kuhn1955, bewley2016}.
+
+\subsection{Ewolucja kluczowych algorytmów śledzenia}
+Rozwój algorytmów klasy MOT doprowadził do powstania kilku przełomowych architektur, stopniowo
+rozwiązujących problemy okluzji i wydajności obliczeniowej.
+
+\subsubsection{SORT \textit{(ang. Simple Online and Realtime Tracking)}, 2016:}
+Minimalistyczny algorytm łączący predykcję filtrem Kalmana i dopasowanie oparte na metryce IoU za
+pomocą algorytmu węgierskiego \cite{wojke2017}. Dzięki prostej budowie cechuje się dużą szybkością - aktualizuje
+ścieżki z częstotliwościom 260 $Hz$ \cite{bewley2016}, jednak jest podatny na gubienie tożsamości w
+przypadku nawet krótkotrwałego zasłonięcia obiektu \cite{bewley2016, wojke2017}.
+
+\subsubsection{Deep SORT, 2017}
+Rozwinięcie algorytmu SORT o mechanizm asocjacji oparty na głębokich cechach
+wizualnych\cite{wojke2017}. Poprzez zastosowanie dedykowanej sieci CNN, wytrenowanej na zadanie
+reidentyfikacji (Re-ID), Deep SORT wyznacza deskryptory wizualne obiektów. Pozwala to na poprawne
+powiązanie tożsamości po długotrwałych okluzjach, drastycznie redukując liczbę błędnych przełączeń
+tożsamości (ang. \textit{ID switches}) – w badaniach wykazano spadek tego błędu o 45\% w stosunku
+do SORT \cite{wojke2017}.
+
+\subsubsection{ByteTrack, 2022}
+Autorzy tego algorytmu \cite{zhang2022} zwrócili uwagę na wadę wcześniejszych metod, polegającą na
+odrzucaniu detekcji o niskim poziomie ufności - poniżej danego progu. Wskazali oni, że takie
+pomijane detekcje w rzeczywistości bardzo często reprezentują prawdziwe obiekty, które uległy
+częściowemu zasłonięciu lub rozmyciu w ruchu. Aby rozwiązać ten problem, wprowadzono dwustopniowy
+mechanizm asocjacji BYTE. W pierwszym kroku system standardowo dopasowuje detekcje o wysokiej
+ufności. Jeśli po tym etapie istnieją nieprzypisane trajektorie, algorytm przechodzi do drugiego
+kroku. Zamiast usuwać słabe detekcje jako szum tła, system sprawdza, czy ich geometria pokrywa się
+z miejscem, w którym filtr Kalmana przewidywał obecność śledzonego wcześniej obiektu. W tej fazie
+celowo wykorzystuje się wyłącznie podobieństwo przestrzenne (metrykę IoU), ignorując cechy
+wizualne, które przy silnej okluzji są niewiarygodne. Zaufanie słabej detekcji, o ile znajduje się
+ona w przewidywanym miejscu, pozwala z sukcesem kontynuować śledzenie trudnych do wykrycia
+obiektów, co ogranicza fragmentację ścieżek i redukuje liczbę błędów typu False Negative.
+
+\subsubsection{BoT-SORT, 2022}
+Zestaw optymalizacji (\textit{ang. bag of tricks}) zintegrowany z algorytmem ByteTrack, który
+wprowadza trzy kluczowe innowacje rozwiązujące główne ograniczenia wcześniejszych metod
+\cite{aharon2022}:
+\begin{itemize}
+  \item \textbf{Kompensację ruchu kamery (CMC):} Wykorzystuje globalną kompensację ruchu (GMC) oraz rzadki przepływ optyczny do estymacji transformacji tła. Pozwala to na matematyczną korektę wektora stanu filtru Kalmana, zapobiegając rozbieżnościom i utracie ścieżek przy drganiach lub gwałtownych ruchach kamery.
+  \item \textbf{Zmodyfikowany wektor stanu:} Wprowadza bezpośrednie modelowanie szerokości i wysokości ramki ograniczającej w filtrze Kalmana, rezygnując z powszechnie stosowanej miary proporcji boków. Zmiana ta poprawiła precyzję dopasowania predykcji do rzeczywistej szerokości obiektów.
+  \item \textbf{Nowy mechanizm łączenia macierzy kosztów:} Integruje odległość przestrzenną (IoU) oraz unikalne cechy wyglądu (Re-ID). Zamiast stosowanej powszechnie sumy ważonej, algorytm jako ostateczny koszt przypisania wybiera wartość minimalną z obu macierzy (po uprzednim odfiltrowaniu niemożliwych par), co zwiększa skuteczność kojarzenia obiektów po okluzjach.
+\end{itemize}
+
+\subsection{Ocena efektywności algorytmów MOT}
+Ilościowa ocena systemów MOT opiera się na ujednoliconych wskaźnikach matematycznych, które
+weryfikują zarówno zdolność detekcji, jak i stabilność asocjacji w czasie:
+\begin{itemize}
+  \item \textbf{MOTA (Multiple Object Tracking Accuracy):} Ocenia ogólną dokładność systemu, sumując trzy typy błędów: pominięte obiekty (\textit{False Negatives} -- $FN_t$), fałszywe alarmy (\textit{False Positives} -- $FP_t$) oraz błędy przełączenia tożsamości (\textit{ID Switches} -- $IDSW_t$) \cite{bernardin2008, milan2016}. Wzór przyjmuje postać:
+        $$MOTA=1-\frac{\sum_{t}(FN_{t}+FP_{t}+IDSW_{t})}{\sum_{t}GT_{t}}$$
+        gdzie $GT_t$ to rzeczywista liczba obiektów (\textit{ang. Ground Truth}) w klatce $t$. Zakres tej metryki wynosi $(-\infty, 1]$ \cite{milan2016}.
+
+  \item \textbf{MOTP (Multiple Object Tracking Precision):} Mierzy geometryczną dokładność dopasowania ramek ograniczających dla poprawnie skojarzonych par obiektów \cite{bernardin2008, milan2016}:
+        $$MOTP=\frac{\sum_{i,t}d_{i,t}}{\sum_{t}c_{t}}$$
+        gdzie $d_{i,t}$ reprezentuje odległość (np. opartą na stopniu pokrycia IoU) dla dopasowanej pary $i$ w klatce $t$, a $c_t$ oznacza liczbę wszystkich poprawnych dopasowań w klatce $t$.
+
+  \item \textbf{IDF1 (Identification F1 Score):} Ocenia długoterminową zdolność systemu do utrzymania stałych tożsamości, mierząc spójność na poziomie całych trajektorii \cite{ristani2016}. Jest to średnia harmoniczna precyzji i czułości identyfikacji:
+        $$IDF1=\frac{2\cdot{IDTP}}{2\cdot{IDTP}+IDFP+IDFN}$$
+        gdzie $IDTP$, $IDFP$ i $IDFN$ reprezentują odpowiednio: poprawne, błędne oraz pominięte przypisania tożsamości, wyznaczone globalnie dla całego nagrania wideo \cite{ristani2016}.
+\end{itemize}
+
+\subsection{Standardowe benchmarki (MOTChallenge)}
+Ocena porównawcza algorytmów śledzenia opiera się na standaryzowanej platformie testowej
+MOTChallenge:
+\begin{itemize}
+  \item \textbf{MOT16 / MOT17:} Zestaw składający się z 14 sekwencji wideo reprezentujących zróżnicowane warunki środowiskowe (sceny miejskie, zmienne oświetlenie, ruch pieszy) \cite{milan2016}. Edycja MOT17 dostarcza wysoce precyzyjne adnotacje oraz dedykowany zestaw detekcji wygenerowanych przez trzy publiczne detektory (DPM, Faster R-CNN, SDP), co zapewnia uczciwość porównań metod \cite{milan2016, zhang2022}.
+
+  \item \textbf{MOT20:} Zbiór danych zaprojektowany specjalnie dla scen o skrajnie wysokim zagęszczeniu tłumu (np. rynki miejskie, hale koncertowe), charakteryzujący się występowaniem gęstych skupisk obiektów generujących permanentne okluzje \cite{dendorfer2020}.
+\end{itemize}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Systemy wielokamerowe - MTMC}
+\subsection{Wprowadzenie do problematyki wielokamerowego śledzenia obiektów}
+
+Rozwój infrastruktury wizyjnej oraz skokowy wzrost mocy obliczeniowej systemów analitycznych
+doprowadziły do ewolucji systemów nadzoru wideo z podejścia lokalnego do w pełni rozproszonego.
+Klasyczne algorytmy śledzenia w pojedynczej kamerze (\textit{ang. Single-Camera Tracking} -- SCT),
+choć osiągają obecnie zadowalającą dokładność dzięki wykorzystaniu zaawansowanych głębokich sieci
+neuronowych, napotykają na fundamentalne ograniczenia przestrzenne. Pojedyncza kamera posiada
+ograniczone pole widzenia, w którym obiekty często ulegają długotrwałej okluzji (zasłonięciu), a
+jej fizyczne usytuowanie nierzadko narzuca trudną perspektywę obserwacji. Z tego powodu
+zainteresowanie badaczy i przemysłu skupia się obecnie na systemach śledzenia wielu obiektów w
+sieci kamer, powszechnie określanych w literaturze akronimami MTMC (\textit{ang. Multi-Target
+  Multi-Camera Tracking}) lub MCMT (\textit{ang. Multi-Camera Multi-Target})~\cite{ristani2016}.
+
+Głównym celem systemów MTMC nie jest jedynie detekcja i przypisanie tymczasowych identyfikatorów do
+obiektów w polu widzenia pojedynczej kamery. Ich zadaniem jest łączenie danych z wielu strumieni
+wideo, pozwalając na przypisanie i utrzymanie unikalnego, globalnego identyfikatora \textit{(ang.
+  Global ID)} dla każdego śledzonego obiektu w całej sieci monitoringu~\cite{ristani2016,
+  nvidia_mtmc}. Systemy te stanowią fundament nowoczesnych, zautomatyzowanych przestrzeni handlowych,
+inteligentnych magazynów logistycznych oraz platform zarządzania ruchem miejskim. Pozwalają one na
+odtworzenie ciągłych, spójnych trajektorii obiektów w czasie i przestrzeni. Jest to niezbędne do
+analizy przepływu klientów, wczesnego wykrywania anomalii oraz automatyzacji i optymalizacji
+procesów przemysłowych~\cite{nvidia_mtmc}.
+
+Należy podkreślić, że przestrzenie, w których wdraża się systemy MTMC, różnią się zakresem pokrycia
+wizualnego. W literaturze wyróżnia się dwa podstawowe sposoby rozmieszczenia kamer, które wpływają
+na dobór metod analizy~\cite{woo2024}. Pierwszy obejmuje sieci kamer o pokrywających się polach
+widzenia (\textit{ang. overlapping FOV}), dzięki którym ten sam obiekt może być obserwowany
+równocześnie z różnych perspektyw. Ułatwia to łączenie informacji geometrycznych. Drugi scenariusz,
+częstszy w praktyce i trudniejszy obliczeniowo, obejmuje układy z rozłącznymi polami widzenia
+(\textit{ang. non-overlapping FOV}). W takim przypadku obiekt może zniknąć z obrazu jednej kamery,
+przejść przez martwą strefę (\textit{ang. blind spot}), a następnie pojawić się w innej, oddalonej
+kamerze po czasie trudnym do oszacowania~\cite{ristani2016}. Oznacza to, że problem nie sprowadza
+się już tylko do śledzenia ruchu, lecz staje się zadaniem reidentyfikacji wymagającym modelowania
+zależności czasowo-przestrzennych~\cite{ristani2016}.
+
+\subsection{Standardowa architektura potoku przetwarzania danych MTMC}
+
+Złożoność obliczeniowa i~strukturalna śledzenia wielokamerowego wymaga zastosowania architektury zorientowanej na mikroserwisy oraz kaskadowe przetwarzanie potokowe (\textit{ang. pipeline}). Współczesne rozwiązania przemysłowe i~akademickie (m.in. platforma NVIDIA DeepStream SDK czy architektury z~konkursów AI City Challenge) opierają się na powszechnie przyjętym paradygmacie śledzenia opartego na detekcji (\textit{ang. tracking-by-detection})~\cite{nvidia_mtmc, cherdchusakulchai2024}. Paradygmat ten dzieli złożony problem na dwa główne, sekwencyjne etapy: lokalne śledzenie wewnątrz poszczególnych kamer oraz późniejszą, globalną asocjację między kamerami~\cite{woo2024}.
+
+W~typowym, dwuetapowym podejściu do MTMC, proces rozpoczyna się od wygenerowania krótkich ścieżek (\textit{ang. tracklets}) dla każdego obiektu rejestrowanego niezależnie przez każdą z~kamer~\cite{woo2024mtmmc, ristani2016}. W~pierwszym kroku moduły detekcji oparte na głębokich sieciach splotowych (CNN) lokalizują sylwetki ludzi lub pojazdów na poszczególnych klatkach obrazu. Następnie lokalny moduł śledzący (SCT), wykorzystując techniki estymacji ruchu (np. filtry Kalmana), łączy te niezależne predykcje w~krótkoterminowe ścieżki wewnątrz pojedynczego widoku~\cite{bewley2016, aharon2022}. Operacja ta ma na celu odfiltrowanie błędnych detekcji (szumu), uzupełnienie luk w~trajektoriach powstałych na skutek krótkotrwałych okluzji oraz zagregowanie cech wizualnych. Pozwala to na wygenerowanie znacznie stabilniejszego i~wiarygodniejszego opisu tożsamości przed przekazaniem danych do algorytmów reidentyfikacji~\cite{ristani2016, riu2024}.
+\section{Reidentyfikacja obiektów - Re-ID}
+\label{sec:reidentyfikacja_reid}
+
+\subsection{Definicja i sformułowanie problemu reidentyfikacji}
+\label{subsec:definicja_reid}
+
+Reidentyfikacja obiektów (\textit{ang. person/vehicle re-identification} -- Re-ID) umożliwia
+kojarzenie tożsamości celów ruchomych przemieszczających się pomiędzy fizycznie rozłącznymi
+obszarami, które są obserwowane przez kamery o~niepokrywających się polach widzenia (\textit{ang.
+  non-overlapping fields of view}) \cite{ristani2016, zheng2016person}.
+
+Proces ten definiuje się jako zadanie wyszukiwania informacji wizualnej (\textit{ang. image
+  retrieval}) w relacji $1:N$ \cite{zheng2016person, zheng2017wild}. Dane wejściowe dla algorytmu
+Re-ID składają się z~dwóch podstawowych zbiorów:
+\begin{itemize}
+  \item \textbf{Zapytania} (\textit{ang. query} lub \textit{probe}) -- reprezentowanego przez wycięty kadr obrazu zawierający sylwetkę poszukiwanego obiektu
+        (człowieka lub pojazdu). Kadr ten jest najczęściej generowany przez moduł detekcji lub śledzenia wewnątrz pojedynczej kamery \cite{ristani2016, zheng2016person}.
+  \item \textbf{Galerii} (\textit{ang. gallery}) -- wielkoskalowej bazy danych ($N$ elementów) zawierającej kadry obiektów referencyjnych
+        zarejestrowanych przez inne kamery w~sieci, wśród których algorytm poszukuje dopasowań \cite{zheng2016person}. W warunkach rzeczywistych galeria ta jest
+        często generowana automatycznie przez detektory wizyjne, co nieuniknienie wprowadza do niej szum w postaci fałszywych detekcji \cite{zheng2017wild}.
+\end{itemize}
+
+Skuteczne rozwiązanie tego problemu opiera się na dwóch podstawowych elementach \cite{liao2015}.
+Pierwszym jest wyznaczenie możliwie najlepiej rozróżniającej reprezentacji cech dla zapytania i
+obrazów z galerii. Drugim jest nauka miary podobieństwa, czyli określenie, jak porównywać obiekty w
+przestrzeni cech, aby uporządkować obrazy z galerii od najbardziej do najmniej podobnych względem
+zapytania \cite{liao2015, zheng2016person}.
+
+Głównym wyzwaniem jest to, że model musi opierać się wyłącznie na cechach wyglądu zewnętrznego,
+takich jak kolor i~struktura odzieży czy ogólna sylwetka \cite{rao2023}. Wynika to z~faktu, że
+niska rozdzielczość oraz skośne ustawienie kamer utrudniają wydobycie precyzyjnych cech
+biometrycznych, takich jak geometria twarzy czy tekstura tęczówki \cite{ristani2016,
+  zheng2017wild}. Dodatkowym utrudnieniem są duże różnice między obrazami tej samej osoby,
+spowodowane zmianami oświetlenia, perspektywy widzenia kamery, pozy obiektu oraz częstymi okluzjami
+\cite{liao2015, zheng2017wild}.
+
+\subsection{Klasyczne podejścia oparte na cechach projektowanych ręcznie}
+\label{subsec:hand_crafted_reid}
+
+Początkowo badania nad reidentyfikacją osób koncentrowały się na ręcznym projektowaniu deskryptorów
+wizualnych (\textit{ang. hand-crafted features}) odpornych na transformacje geometryczne
+i~fotometryczne sceny oraz na optymalizacji klasycznych miar odległości (\textit{ang. metric
+  learning})~\cite{zheng2016person}. Do najczęściej cytowanych rozwiązań tej rodziny należą:
+\begin{itemize}
+  \item \textbf{Histogramy koloru}: Reprezentujące globalny lub lokalny rozkład barw w~różnych przestrzeniach (RGB, HSV, YUV). Metody te charakteryzowały się prostotą obliczeniową, lecz wykazywały skrajną wrażliwość na zmiany oświetlenia i~różnice w temperaturze barwowej i~balansie bieli kamer.
+  \item \textbf{SDALF} (\textit{ang. Symmetry-Driven Accumulation of Local Features}): Algorytm opiera się na lokalizacji osi symetrii i~asymetrii ludzkiego ciała, co pozwala na podział sylwetki na stabilne regiony (głowa, tułów, nogi). Cechy lokalne (takie jak tekstury oparte na filtrach Gabora i~histogramy kolorów) są akumulowane wzdłuż tych osi, co pozwala na uzyskanie reprezentacji odpornej na rotacje obiektu i~zmiany pozy~\cite{farenzena2010person}.
+  \item \textbf{LOMO} (\textit{ang. Local Maximal Occurrence}): Zaawansowana metoda opracowana przez Liao i~in. \cite{liao2015}. Aby uodpornić system na wahania jasności, obrazy przetwarzane są transformatą Retinexa, która symuluje percepcję ludzkiego oka, uwydatniając detale w cieniach i stabilizując barwy \cite{liao2015}. Do ekstrakcji tekstur wykorzystano niezależny od skali intensywności i wysoce odporny na szum operator SILTP \cite{liao2015}. Główną innowacją LOMO jest jednak proces analizy poziomych pasów obrazu za pomocą przesuwających się okien. Algorytm rejestruje maksymalną wartość wystąpienia danej cechy (np. wzoru lub koloru) wzdłuż całej linii poziomej \cite{liao2015}. Taka agregacja sprawia, że ostateczny wektor cech jest niezwykle odporny na rotację obiektu (zmiany punktu widzenia kamery – \textit{ang. viewpoint invariance}), eliminując potrzebę dokładnego lokalizowania poszczególnych partii ciała \cite{liao2015}.
+\end{itemize}
+
+\subsection{Uczenie reprezentacji metrycznych i sieci syjamskie}
+\label{subsec:metric_learning_reid}
+
+Zastosowanie głębokich sieci neuronowych do reidentyfikacji pozwoliło na zjednoczenie etapu
+ekstrakcji cech. Najważniejszą rolę w tym procesie odgrywa głębokie uczenie metryk (\textit{ang.
+  deep metric learning}) w~podejściu \textit{end-to-end}, dodatkowe, osobne etapy klasycznego uczenia
+odległości stały się zbędne \cite{hermans2017defense}.
+
+Wczesne architektury głębokie bazowały na sieciach syjamskich (\textit{ang. siamese networks})
+składających się z~dwóch lub więcej bliźniaczych gałęzi o~współdzielonych wagach, do których
+wprowadzano pary obrazów \cite{zheng2017wild}. Sieci te optymalizowano przy użyciu funkcji straty
+kontrastowej (\textit{ang. contrastive loss}), która dąży do minimalizacji odległości między
+cechami par obrazów o~tej samej tożsamości (pozytywnych) oraz maksymalizacji odległości par
+o~różnych tożsamościach (negatywnych), tak aby oddalić je od siebie powyżej zdefiniowanego
+marginesu $\alpha$~\cite{zheng2017wild}.
+
+Powszechnie stosowaną alternatywą stała się funkcja straty trójkowej (\textit{ang. triplet loss}),
+która operuje na zestawach złożonych z~próbki kotwiczącej ($x_a$), próbki pozytywnej ($x_p$) oraz
+próbki negatywnej ($x_n$)~\cite{hermans2017defense}. Klasyczny triplet loss dąży do spełnienia
+warunku:
+\begin{equation}
+  D(x_a, x_p) + m < D(x_a, x_n)
+  \label{eq:triplet_loss}
+\end{equation}
+gdzie $D(\cdot, \cdot)$ oznacza euklidesową odległość w~przestrzeni cech, a~$m$ reprezentuje narzucony margines bezpieczeństwa~\cite{hermans2017defense}.
+
+Hermans i~in.~\cite{hermans2017defense} wykazali, że efektywność tej straty w~Re-ID ulega
+drastycznej poprawie przy zastosowaniu strategii próbkowania najtrudniejszych przykładów wewnątrz
+mini-batcha (\textit{ang. batch-hard triplet loss}):
+\begin{equation}
+  \mathcal{L}_{BH} = \sum_{i=1}^{P} \sum_{a=1}^{K}
+  \left[ m + \max_{p=1 \dots K} D(x_i^a, x_i^p) - \min_{\substack{j=1 \dots P \\ j \neq i \\ n=1 \dots K}} D(x_i^a, x_j^n) \right]_+
+  \label{eq:batch_hard_triplet}
+\end{equation}
+gdzie $P$ oznacza liczbę unikalnych tożsamości w~batchu, $K$ to liczba obrazów na każdą tożsamość, $x_i^a$ oznacza $a$-tą próbkę kotwiczącą należącą do $i$-tej tożsamości, a~$[\cdot]_+$ reprezentuje funkcję $\max(0, \cdot)$~\cite{hermans2017defense}. Algorytm ten koncentruje proces optymalizacji wyłącznie na najmniej podobnych parach pozytywnych oraz najbardziej zbliżonych parach negatywnych, eliminując dominację łatwych przykładów~\cite{hermans2017defense}.
+
+\subsection{Architektury splotowe (CNN) dedykowane do zadań Re-ID}
+\label{subsec:cnn_reid}
+
+Większość splotowych modeli reidentyfikacji osób wykorzystuje architekturę ResNet-50 jako sieć
+bazową (\textit{ang.backbone}) ze względu na korzystny kompromis między dokładnością a kosztami
+obliczeniowymi \cite{ristani2016, zheng2016person}. Ze względu na specyfikę zadania opracowano
+dedykowane paradygmaty uczenia reprezentacji:
+\begin{itemize}
+  \item \textbf{IDE} (\textit{ang. ID-discriminative Embedding}): Model wprowadzony przez Zhenga i~in.~\cite{zheng2017wild}. Traktuje on proces treningowy jako problem klasyfikacji wieloklasowej, w którym każda tożsamość w~zbiorze uczącym stanowi odrębną klasę - model optymalizowany jest z użyciem funkcji straty opartej na entropii krzyżowej ~\cite{zheng2017wild}. Podczas wnioskowania odrzuca się warstwę klasyfikacyjną, a~wyjściowy wektor cech z~przedostatniej warstwy (GAP) służy bezpośrednio jako deskryptor tożsamości obiektu~\cite{zheng2017wild}.
+  \item \textbf{PCB} (\textit{ang. Part-based Convolutional Baseline}): Model zaproponowany przez Suna i~in.~\cite{sun2018beyond} w~celu rozwiązania problemu utraty informacji przestrzennych w~globalnych deskryptorach. PCB rezygnuje z~globalnego uśredniania cech \textit{(GAP)} na rzecz równomiernego, sztywnego podziału wyjściowej mapy cech na $p$ poziomych pasów, najczęściej $p=6$~\cite{sun2018beyond}. W przeciwieństwie do wcześniejszych metod, podział ten ma charakter wyłącznie przestrzenny i~nie wymaga dopasowania do semantycznych części ciała. Dla każdego pasa obliczany jest niezależny lokalny wektor cech, optymalizowany osobną funkcją straty, co pozwala modelowi uchwycić drobne, lokalne szczegóły wyglądu (\textit{fine-grained features}) \cite{sun2018beyond}.
+\end{itemize}
+
+\subsection{Architektury oparte na Transformerach (SOTA)}
+\label{subsec:transformers_reid}
+
+Obecnie do najskuteczniejszych rozwiązań w dziedzinie Re-ID należą modele oparte na architekturze
+Vision Transformer (ViT). Dzięki mechanizmowi samoatencji (\textit{ang. self-attention}) potrafią
+one modelować zależności długiego zasięgu (\textit{ang. long-range dependencies}) bezpośrednio na
+podstawie sekwencji fragmentów obrazu (\textit{ang. patches}), bez utraty szczegółów wynikającej z
+operacji zmniejszania rozdzielczości (\textit{ang .downsampling}) charakterystycznych dla
+klasycznych sieci splotowych \cite{he2021transreid}. Przełomową architekturą tej grupy jest model
+\textbf{TransReID} opracowany przez He i~in.~\cite{he2021transreid}. Wprowadza on do struktury
+transformera dwa istotne moduły:
+\begin{itemize}
+  \item \textbf{JPM} (\textit{ang. Jigsaw Patch Module}): Moduł ten dzieli wektory cech fragmentów obrazu na kilka grup, dokonując na nich operacji przesunięcia (\textit{ang. shift}) i~przemieszania (\textit{ang. patch shuffle}) przed przekazaniem ich do kolejnych warstw sieci~\cite{he2021transreid}. Wymusza to na modelu uwzględnianie szerszego kontekstu globalnego i ogranicza jego nadmierne skupienie na jednym dominującym fragmencie sylwetki. W rezultacie zwiększa się odporność systemu na częściowe okluzje oraz zmiany pozy śledzonego obiektu \cite{he2021transreid}.
+  \item \textbf{SIE} (\textit{ang. Side Information Embeddings}): Pozwala na bezpośrednią integrację niewizualnych informacji kontekstowych, takich jak identyfikator kamery czy punkt widzenia, za pomocą wyuczalnych reprezentacji (\textit{ang. learnable embeddings})~\cite{he2021transreid}. Modyfikuje to wejściową sekwencję $Z_0$ zawierającą już informacje o~położenie zgodnie ze wzorem:
+        \begin{equation}
+          Z'_0 = Z_0 + \lambda S_{(C,V)}
+          \label{eq:sie}
+        \end{equation}
+        gdzie $S_{(C,V)}$ oznacza połączoną reprezentację dla danej kamery i~perspektywy, natomiast~$\lambda$ jest parametrem wagowym. Mechanizm ten pozwala ograniczyć błędy w~przestrzeni cech wynikające ze specyfiki fizycznego położenia danej kamery, a tym samum zmniejszyć różnice w~podobieństwie obiektów rejestrowanych z~różnych ujęć~\cite{he2021transreid}.
+\end{itemize}
+
+\subsection{Problem rozbieżności dziedzin i adaptacja bez nadzoru (UDA)}
+\label{subsec:domain_gap_reid}
+
+Jednym z~najważniejszych ograniczeń praktycznych systemów Re-ID jest rozbieżność między
+środowiskiem treningowym a~warunkami pracy systemu, czyli tzw. przesunięcie dziedzinowe
+(\textit{ang. domain shift / domain gap})~\cite{ristani2016}. Model, który działa bardzo dobrze na
+danych z~jednego zbioru kamer, po przeniesieniu do innej sieci monitoringu często wyraźnie traci
+skuteczność~\cite{ristani2016, ge2020mutual}. Wynika to z~różnic w~obrazie rejestrowanym przez
+różne kamery: inne jest oświetlenie, tło, perspektywa, jakość kompresji oraz sam wygląd osób
+widzianych z~różnych punktów obserwacji~\cite{ristani2016, ge2020mutual}.
+
+W~odróżnieniu od klasycznych problemów nadzorowanego uczenia, w~praktycznych zastosowaniach zwykle
+nie ma możliwości ręcznego opisania dużej liczby danych z~nowego środowiska. Z~tego powodu
+rozwijane są metody nienadzorowanej adaptacji dziedzinowej (\textit{ang. Unsupervised Domain
+  Adaptation} -- UDA)~\cite{ge2020mutual}. Ich celem jest przeniesienie wiedzy z~domeny źródłowej do
+docelowej bez użycia etykiet dla danych docelowych. W~literaturze Re-ID szczególnie ważne stały się
+podejścia oparte na schemacie nauczyciel--uczeń, ponieważ pozwalają wykorzystywać nieopisane dane
+z~nowego środowiska w~sposób kontrolowany i~stosunkowo stabilny.
+
+Jednym z~najbardziej znanych rozwiązań tego typu jest algorytm \textbf{MMT} (\textit{ang. Mutual
+  Mean-Teacher}) zaproponowany przez Ge i~in.~\cite{ge2020mutual}. Metoda ta wykorzystuje dwie
+równolegle uczone sieci oraz ich wersje nauczycielskie, których parametry nie są aktualizowane
+przez propagację błędu, lecz jako wykładnicza średnia krocząca (\textit{ang. Exponential Moving
+  Average} -- EMA) wag modeli uczniów~\cite{ge2020mutual}. Dzięki temu model nauczyciela dostarcza
+bardziej stabilnych pseudoetykiet dla danych docelowych.
+
+Kluczowym elementem MMT jest wzajemne uczenie się modeli na podstawie miękkich pseudoetykiet
+(\textit{ang. soft pseudo-labels}) generowanych dla danych z~domeny docelowej~\cite{ge2020mutual}.
+Zamiast przypisywać próbkę do jednej, sztywnej klasy, model otrzymuje rozkład prawdopodobieństwa,
+który lepiej oddaje niepewność predykcji. Takie podejście zmniejsza ryzyko błędów wynikających
+ze~zbyt pewnych, ale niepoprawnych przypisań i~ogranicza narastanie szumu w~kolejnych iteracjach
+uczenia~\cite{ge2020mutual}.
+
+W~kontekście Re-ID jest to szczególnie istotne, ponieważ ta sama osoba może wyglądać bardzo różnie
+w~zależności od kamery, kierunku patrzenia, odległości od obiektywu czy warunków oświetleniowych.
+Dodatkowo w~obrazie często pojawia się tło, które nie niesie informacji o~tożsamości, a~jedynie
+utrudnia dopasowanie. Z~tego powodu metody UDA dla Re-ID zwykle starają się nie tylko ograniczyć
+różnice między domenami, ale też wydobyć cechy najbardziej związane z~samą osobą, a~nie
+z~otoczeniem.
+
+\subsection{Specyfika reidentyfikacji pojazdów w odniesieniu do osób}
+\label{subsec:vehicle_vs_person_reid}
+
+Choć reidentyfikacja pojazdów (\textit{ang. vehicle Re-ID}) i~reidentyfikacja osób opierają się na
+podobnych podstawach, oba zadania różnią się pod względem cech obiektu i~trudności praktycznych:
+\begin{itemize}
+  \item Sylwetka człowieka może zmieniać się w~czasie, na przykład w~zależności od pozy ciała, natomiast
+        pojazd ma zwykle stały kształt.
+  \item Samochody produkowane seryjnie często wyglądają bardzo podobnie, nawet jeśli są to różne
+        egzemplarze tego samego modelu. Z~tego powodu sieć musi szukać drobnych, wyróżniających cech,
+        takich jak tablice rejestracyjne, naklejki, uszkodzenia karoserii czy przedmioty widoczne we
+        wnętrzu pojazdu.
+  \item Wygląd pojazdu zależy od punktu widzenia kamery. Przód, bok i~tył auta mogą wyglądać zupełnie
+        inaczej, dlatego w~praktyce często stosuje się podejście wielowidokowe (\textit{ang. multi-view
+          Re-ID}).
+\end{itemize}
+
+Do oceny algorytmów Re-ID pojazdów stosuje się dedykowane zbiory danych, z~których najważniejsze to
+\textbf{VeRi-776} oraz \textbf{VehicleID}. Pierwszy z~nich zawiera blisko 50~000 zdjęć 776 pojazdów
+zarejestrowanych przez 20 kamer, a~drugi ponad 220~000 obrazów. Zbiory te stanowią obecnie
+podstawowy punkt odniesienia przy testowaniu metod w~trudnych warunkach ruchu
+drogowego~\cite{he2021transreid}.
+
+\subsection{Prywatność i alternatywne metody identyfikacji}
+\label{subsec:privacy_reid}
+
+Tradycyjne podejścia do Re-ID, oparte na pełnych obrazach RGB sylwetek ludzi, budzą uzasadnione
+obawy związane z~ochroną prywatności, zwłaszcza w~kontekście przepisów RODO. Z~tego powodu coraz
+większe zainteresowanie budzą metody, które ograniczają ilość przetwarzanych danych już na etapie
+projektowania systemu (\textit{ang. privacy by design}):
+\begin{itemize}
+  \item \textbf{Silhouette Re-ID}: Podejście polegające na identyfikacji osób wyłącznie na podstawie binarnych masek sylwetek wyodrębnionych z~obrazu, na przykład za pomocą algorytmów BGS. Metody te pomijają teksturę ubrań i~cechy twarzy, a~zamiast tego opierają się na kształcie sylwetki i~dynamice chodu (\textit{ang. gait-based Re-ID})~\cite{chao2019gaitset}. Powszechnie stosowany model \textbf{GaitSet} traktuje sekwencję chodu jako zbiór sylwetek, dzięki czemu dobrze radzi sobie z~brakującymi klatkami i~zmianami tempa poruszania się~\cite{chao2019gaitset}.
+  \item \textbf{Skeleton-based Re-ID}: Podejście wykorzystujące estymację pozy, na przykład za pomocą OpenPose, do wyznaczenia współrzędnych kluczowych punktów ciała człowieka~\cite{rao2023}. Modele takie jak \textbf{TranSG} opisują ruch człowieka za pomocą grafu szkieletowego i~uczą się cech ruchu bez korzystania z~obrazu twarzy czy odzieży. Takie rozwiązanie zapewnia lepszą ochronę prywatności, a~jednocześnie pozwala zachować dobrą skuteczność rozpoznawania między kamerami~\cite{rao2023}.
+\end{itemize}
+
+\section{Rzutowanie na plan terenu (Bird’s-Eye View - BEV) i geometria sceny}
+% To sekcja techniczna łącząca algebrę liniową z praktyką inżynierską — powinna stanowić pomost
+% między kalibracją kamery (sekcja 1) a wielokamerowym śledzeniem (sekcja MTMC).
+
+% Motywacja i cel rzutowania Problem przestrzeni obrazowej: współrzędne pikselowe z różnych kamer są
+% nieporównywalne — ta sama lokalizacja fizyczna ma różne współrzędne ( u , v ) (u,v) w każdej
+% kamerze; nie można wprost obliczać odległości ani prędkości
+
+% Cel rzutowania na plan terenu: sprowadzenie wszystkich detektowanych obiektów do wspólnej
+% metrycznej przestrzeni 2D (podłogi/terenu), gdzie odległości i pozycje są fizycznie
+% interpretowalnie i porównywalne między kamerami
+
+% Zastosowania w MTMC: fuzja trajektorii z wielu kamer, analiza spatio-temporalna przejść,
+% wizualizacja sceny jako „mapa z lotu ptaka"
+
+% Model geometryczny kamery Model otworkowy (pinhole camera model): rzutowanie punktu 3D współczynnik
+% pochylenia (skew) — parametry unikalne dla każdej kamery, wyznaczane w procesie kalibracji
+
+% Parametry zewnętrzne (extrinsic parameters): pozycja i orientacja kamery w przestrzeni świata —
+% kluczowe dla rekonstrukcji przestrzennej i rzutowania na plan terenu
+
+% Modele dystorsji: dystorsja radialna (barrel/pincushion) i tangencjalna — konieczna korekcja przed
+% rzutowaniem; modele Browna-Conrady'ego
+
+% Kalibracja kamery Metody kalibracji: szachownica (chessboard calibration, Zhang 2000) jako
+% standardowe podejście; kalibracja za pomocą punktów referencyjnych w scenie (scene-based
+% calibration) — praktyczna alternatywa dla kamer już zainstalowanych
+
+% Kalibracja dla systemu CCTV: kamery stałe, więc kalibracja jednorazowa; problem zmiany parametrów w
+% czasie (drgania, zmiany temperatury, wandalizm)
+
+% Kalibracja wielokamerowa (multi-camera calibration): wyznaczenie wspólnego układu współrzędnych
+% świata dla wszystkich kamer sieci; metody ze wspólnym polem widzenia i bez niego (non-overlapping
+% FOV calibration)
+
+% Narzędzia: OpenCV (calibrateCamera, stereoCalibrate), biblioteka Kalibr dla kamer wielokamerowych
+
+% Homografia i rzutowanie perspektywiczne Definicja homografii: przekształcenie rzutowe między dwiema
+% płaszczyznami opisane macierzą H H (3×3, 8 stopni swobody) — gdy płaszczyzna terenu jest płaska,
+% rzutowanie obrazu na grunt jest izomorfizmem rzutowym
+
+% Wyznaczanie macierzy homografii: minimum 4 niespółliniowe pary punktów korespondujących (image ↔
+% world); algorytm DLT (Direct Linear Transform) z normalizacją; RANSAC do odrzucenia błędnych
+% korespondencji (outliers)
+
+% Transformacja odwrotna (BEV → obraz): cv2.warpPerspective — generowanie widoku z góry dla
+% wizualizacji lub sieci neuronowych
+
+% Ograniczenia homografii: zakłada płaski teren; błędy rosną dla obiektów wysokich (głowa osoby vs.
+% stopy) — dyskusja o wyborze punktu referencyjnego (środek ciężkości, punkt kontaktu z podłożem)
+
+% Wielowarstwowa homografia i rozszerzenia Problem wysokości obiektów: różne punkty na sylwetce leżą
+% na różnych wysokościach nad gruntem → różne macierze homografii dla różnych warstw wysokości
+% (multi-layer homography, np. Peng et al.)
+
+% Podejście 3D (3D scene reconstruction): pełna rekonstrukcja 3D sceny z wielu kamer — bardziej
+% dokładna, lecz kosztowna obliczeniowo; metody SfM (Structure from Motion), MVS (Multi-View Stereo)
+
+% Probabilistyczna Mapa Zajętości (Probabilistic Occupancy Map): dla każdej komórki siatki na planie
+% terenu oblicza się prawdopodobieństwo obecności obiektu jako iloczyn rzutowanych masek binarnych z
+% wielu kamer — fundamentalne podejście Fleureta et al. (TPAMI 2008)
+
+% Siatka BEV (BEV grid): dyskretyzacja planu terenu na komórki o rozmiarze np. 10×10 cm; kompromis
+% między dokładnością a kosztem obliczeniowym
+
+% BEV w nowoczesnych metodach głębokiego uczenia BEV jako wejście do sieci neuronowych: zamiast
+% rzutowania geometrycznego — nauczalne moduły transformacji perspektywy; BEVNet, IPM (Inverse
+% Perspective Mapping)
+
+% Transformer-based BEV: BEVFormer (2022) — wielokamerowe BEV dla autonomicznej jazdy; architektura
+% adaptowalna do stacjonarnych sieci kamer CCTV
+
+% Zalety podejścia opartego na DL: odporność na niedoskonałości kalibracji, możliwość uczenia się na
+% rzeczywistych danych, lepsza obsługa niespłaszczonego terenu
+
+% Ograniczenia: potrzeba dużych zbiorów z anotacjami 3D lub BEV, trudna interpretowalność
+% (explainability)
+
+% Analiza spatio-temporalna w przestrzeni BEV Trajektoria w planie terenu: po rzutowaniu każdy
+% tracklet z kamery staje się sekwencją punktów 2D w metrycznej przestrzeni; możliwa analiza
+% prędkości, kierunku ruchu, stref wejścia/wyjścia
+
+% Strefa wejścia/wyjścia (entry/exit zones): manualna lub automatyczna detekcja regionów, przez które
+% obiekty wchodzą i wychodzą z pola widzenia kamery — kluczowe dla modelu przejść MTMC
+
+% Predykcja pozycji między kamerami: jeśli znana jest mapa topologiczna sieci kamer, można szacować
+% spodziewaną pozycję i czas pojawienia się obiektu w kolejnej kamerze na podstawie jego ostatniej
+% pozycji w BEV
+
+% Wizualizacja sceny: plan terenu jako interfejs operatora systemu — nakładanie trajektorii
+% wszystkich obiektów na mapę lokalizacji (schemat budynku, zdjęcie lotnicze)
+
+% Sugestia: tę sekcję warto umieścić po sekcji o kalibracji kamery (jako jej naturalne rozwinięcie),
+% a przed sekcją MTMC — ponieważ rzutowanie na plan terenu jest technicznym fundamentem fuzji danych
+% wielokamerowych. Możesz też zawrzeć tutaj własny schemat blokowy ilustrujący przepływ: obraz →
+% detekcja bounding-box → punkt kontaktu z podłożem → homografia → pozycja BEV.
+
+% Definicja MTMC (Multi-Target Multi-Camera Tracking): problem utrzymania globalnych identyfikatorów
+% obiektów w sieci kamer o pokrywających się lub niepokrywających polach widzenia (overlapping /
+% non-overlapping FOV)
+
+% Architektura systemu MTMC:
+
+% Moduł detekcji (per-kamera)
+
+% Lokalne śledzenie SCT (per-kamera, wynik: tracklets)
+
+% Globalne skojarzenie między kamerami (inter-camera association)
+
+% Zarządzanie globalnym ID
+
+% Rzutowanie na plan terenu (ground plane projection): kalibracja kamery + homografia → wspólna
+% metryczna przestrzeń 2D; probabilistyczna mapa zajętości (Probabilistic Occupancy Map, Fleuret et
+% al., 2008); analiza spatio-temporalna przejść między kamerami
+
+% Modele przejść między kamerami (camera transition model): rozkład czasu przejść (transition time
+% distribution), topologia sieci kamer, strefy wejścia/wyjścia (entry/exit zones)
+
+% Fuzja cech wizualnych i spatio-temporalnych: łączenie embeddingów Re-ID z informacją o czasie i
+% przewidywanej pozycji — redukuje liczbę błędnych skojarzeń
+
+% Podejścia grafowe i optymalizacyjne: graph-based multi-cut, sieć przepływów (flow network, Berclaz
+% et al.), algorytmy klasteryzacji (hierarchical clustering, agglomerative clustering) trackletów
+
+% Synchronizacja i kalibracja czasowa kamer: problem desynchronizacji strumieni wideo, timestamp
+% alignment
+
+% Benchmarki MTMC: DukeMTMC (wycofany z przyczyn etycznych), CityFlow (CVPR 2019), AICity Challenge —
+% opis zbiorów i protokołów ewaluacyjnych
+
+% Wyzwania otwarte: skalowalność na dziesiątki kamer, śledzenie w scenach z dużym tłumem,
+% ograniczenia obliczeniowe dla systemów real-time, prywatność danych
+
+\chapter{Przegląd istniejących rozwiązań}\label{chap:przegląd_rozwiązań}
+\chapter{Implementacja systemu śledzenia i reidentyfikacji}\label{chap:implementacja}
+\chapter{Integracja widoku wielokamerowego i rzutowanie na mapę}\label{chap:integracja_mapy}
+\chapter{Badanie i analiza efektywności systemu}\label{chap:badanie_efektywności}
+\chapter{Podsumowanie i wnioski}\label{chap:podsumowanie}
+

@@ -1,0 +1,54 @@
+% !TeX encoding = utf8
+% !TeX spellcheck = pl-PL
+
+\documentclass[thesis=mgr,faculty=ee]{EE-dyplom} 
+
+
+
+\instytut{Instytut Sterowania i Elektroniki Przemysłowej}
+\kierunek{Informatyka Stosowana}
+\specjalnosc{Informatyka w Biznesie}
+\title{System śledzenia i reidentyfikacji obiektów
+w nagraniach z wielu kamer monitoringu z
+wykorzystaniem mapy terenu}
+\engtitle{Object Tracking and Re-Identification System
+for Multi-Camera Surveillance Footage Using
+a Map of the Monitored Area}
+\album{340803}
+\author{Natalia Turska}
+\promotor{dr inż. Witold Czajewski}
+\date{\the\year{}}
+\miejscowosc{Warszawa}
+
+\streszczeniepracy{
+Streszczenie pracy powinno w zwięzły sposób opisywać to czego dotyczy praca, co jest jej celem, jakie przyjęto założenia, co w ramach pracy zrobiono, co przebadano, jakie rozwiązania zaproponowano i jakie wyniki osiągnięto. Jeśli coś sprawiło jakiś problem, można to także ująć w streszczeniu i skomentować czy udało się ów problem rozwiązać i jak, czy też nie (nic w tym złego, jeśli czegoś się nie udało do końca zrobić). 
+\\
+Streszczenie nie powinno być przeładowane, powinno mieć około 200 słów i zawierać najważniejsze informacje na temat pracy i najważniejsze osiągnięcia, nie należy więc podawać szczegółowych wyników czy też opisywać struktury pracy - na to miejsce znajduje się w samej pracy.
+\\
+Streszczenie zwykle pisze się na samym końcu pracy - z oczywistych względów.
+
+\noindent\textit{W niniejszej pracy magisterskiej zaprezentowane zostały próby rozwiązania problemu klasyfikacji poziomu zabrudzenia chodników z wykorzystaniem głębokich sieci neuronowych. Wykorzystując dostępny zbiór zdjęć sklasyfikowanych do sześciu klas poziomu zanieczyszczeń, wygenerowano zrównoważone zbiory: sześcioklasowy oraz trzyklasowy. Następnie wybrano trzy sieci różnego rodzaju, aby sprawdzić ich efektywność w rozróżnianiu poszczególnych, często bardzo zbliżonych do siebie zdjęć. Sieć TResNet została wybrana spośród wiodących sieci w rankingach klasyfikacyjnych. Sieć ShuffleNet V2 została wybrana spośród dostępnych implementacji sieci w ramach popularnej biblioteki OpenMMLab. Sieć PMG została wybrana spośród sieci przygotowanych do rozwiązywania specyficznych problemów klasyfikacyjnych dla obrazów o niewielkich różnicach. Wymienione sieci wytrenowano na wygenerowanych zbiorach i osiągnięto dokładność rzędu 80\% i 90\%, odpowiednio dla problemu sześcio-~i trzyklasowego. Najlepszą siecią, w każdym przypadku, okazała się sieć PMG, a wyniki pozostałych sieci były zbliżone.}
+} % koniec streszczenia
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\slowakluczowe{istotne, słowa, kluczowe} 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\thesisabstract{
+% Należy zadbać oto, by tłumaczenie było poprawne i zgodne z oryginałem odnośnie meritum. Koniecznie trzeba sprawdzić tłumaczenie zrobione przez SI, która ostatnio bardzo dobrze tłumaczy, ale czasami może czegoś nie zrozumieć.
+\textit{This engineering thesis presents an attempt to solve the problem of sidewalk dirt level classification using deep neural networks. Using an available set of images classified into six classes of dirt levels, balanced sets of six classes and three classes were generated. Three networks of different types were then selected to test their effectiveness in discriminating between individual, often very similar, images. TResNet was selected among the leading networks in the classification rankings. The ShuffleNet V2 network was selected from available network implementations within the popular OpenMMLab library. The PMG network was selected from networks prepared to solve specific classification problems for images with small differences. The aforementioned networks were trained on the generated sets and an accuracy of 80\% and 90\% was achieved for the six-class and three-class problem, respectively. The PMG network proved to be the best network, in each case, and the results of the other networks were similar.}
+} 
+\thesiskeywords{keywords, that, are, indicative}  
+
+\begin{document}
+\frontpages
+
+\input{tresc_pracy}
+
+\bibliografia
+
+\acronymslist
+\printglossaries
+\listoffigures
+\listoftables
+\załączniki
+\end{document}
+

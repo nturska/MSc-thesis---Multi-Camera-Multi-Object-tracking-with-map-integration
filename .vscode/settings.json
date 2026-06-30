@@ -1,0 +1,50 @@
+{
+    "latex-workshop.latex.recipe.default": "xelatex -> biber -> xelatex*2",
+    "latex-workshop.latex.tools": [
+        {
+            "name": "xelatex",
+            "command": "/Library/TeX/texbin/xelatex",
+            "args": [
+                "-synctex=1",
+                "-interaction=nonstopmode",
+                "-file-line-error",
+                "%DOC%"
+            ]
+        },
+        {
+            "name": "biber",
+            "command": "/Library/TeX/texbin/biber",
+            "args": [
+                "%DOCFILE%"
+            ]
+        },
+        {
+            "name": "makeglossaries",
+            "command": "/Library/TeX/texbin/makeglossaries",
+            "args": [
+                "%DOCFILE%"
+            ]
+        }
+    ],
+    "latex-workshop.latex.recipes": [
+        {
+            "name": "xelatex -> biber -> xelatex*2",
+            "tools": [
+                "xelatex",
+                "biber",
+                "xelatex",
+                "xelatex"
+            ]
+        },
+        {
+            "name": "xelatex -> biber -> makeglossaries -> xelatex*2",
+            "tools": [
+                "xelatex",
+                "biber",
+                "makeglossaries",
+                "xelatex",
+                "xelatex"
+            ]
+        }
+    ],
+}
