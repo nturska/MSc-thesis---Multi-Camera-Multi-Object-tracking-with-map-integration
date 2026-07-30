@@ -830,31 +830,104 @@ systemów bazodanowych przechowujących globalny graf tożsamości. Architektura
 skalowanie całego systemu, na przykład z~wykorzystaniem orkiestracji kontenerów w~środowisku
 Kubernetes \cite{nvidia_mtmc}.
 
-\subsection{Probabilistyczna mapa zajętości (POM) i problem rzutowania geometrycznego}
+\subsection{Problem rzutowania geometrycznego}
 
-Niezależne obrazy z poszczególnych kamer ($u, v$) należy sprowadzić do wspólnego układu
-odniesienia. Najczęściej stosowanym układem jest globalna metryczna płaszczyzna terenu (Bird's-Eye
-View - BEV). W scenach o niskim zagęszczeniu standardową praktyką jest wyznaczenie dolnej krawędzi
-ramki otaczającej jako fizycznego punktu styku obiektu z podłożem, a następnie rzutowanie tego
-punktu na globalną mapę za pomocą macierzy homografii lub modelu projekcyjnego kamery z parametrami
-zewnętrznymi \cite{}.
+Niezależne obrazy z~poszczególnych kamer (we współrzędnych pikselowych $u, v$) należy sprowadzić do
+wspólnego układu odniesienia. Najczęściej stosowanym układem jest globalna metryczna płaszczyzna
+terenu (\textit{ang. Bird's-Eye View} -- BEV). W~scenach o~niskim zagęszczeniu standardową praktyką
+jest wyznaczenie dolnej krawędzi ramki ograniczającej jako fizycznego punktu styku obiektu
+z~podłożem, a~następnie rzutowanie tego punktu na globalną mapę za pomocą macierzy homografii lub
+modelu projekcyjnego kamery z~wykorzystaniem jej parametrów zewnętrznych.
 
-Niestety, to podejście zawodzi w przypadkach scen o wysokim zagęszczeniu tłumu lub złożonych
+Niestety, podejście to zawodzi w~przypadkach scen o~wysokim zagęszczeniu tłumu lub przy złożonych
 okluzjach. Obiekty znajdujące się bliżej obiektywu zasłaniają dolne partie sylwetek obiektów
-znajdujących się w głębi sceny. Niemożliwe jest więc wyznaczenie ich punktu styku z podłożem, a
-opieranie rzutowania na zniekształconej predykcji prowadzi do przesunięć wyestymowanej pozycji
-globalnej w układzie BEV.
+znajdujących się w~głębi sceny. Niemożliwe staje się więc precyzyjne wyznaczenie ich punktu styku
+z~podłożem, a~opieranie rzutowania na zniekształconej predykcji prowadzi do znacznych przesunięć
+wyestymowanej pozycji na globalnej płaszczyźnie BEV.
 
-Rozwiązanie tego problemu obszarach widzenia łączonego \textit{(ang. overlapping FOV)}, zostało
-zaprezentowane w 2008 roku jako koncepcja probabilistycznej mapy zajętości \textit{(ang.
-  Probabilistic Occupancy Map - POM)} \cite{}. Zamiast podejmować próbę naprawy zawodnych detektorów
-dwuwymiarowych, POM odwraca proces inferencji i proponuje model generatywny typu "top-down".
-Zakłada on, że jeśli układ fizyczny sceny jest znany, można symulować proces powstawania obrazu i
-poszukiwać takiego rozkładu obiektów na planie terenu, którego syntetyczny widok najlepiej
-odpowiada rzeczywistym danym z wielu kamer po zastosowaniu odejmowania tła (Background Subtraction)
-\cite{}.
+Rozwiązanie tego problemu w sieciach kamer o pokrywających się polach widzenia \textit{(ang.
+  overlapping FOV)} zostało zaprezentowane w~2008 roku jako koncepcja probabilistycznej mapy
+zajętości (\textit{ang. Probabilistic Occupancy Map} -- POM) \cite{fleuret2008}.
 
 \subsection{Matematyczne sformułowanie algorytmu POM}
+
+Algorytm probabilistycznej mapy zajętości (\textit{ang. Probabilistic Occupancy Map} -- POM) służy
+do szacowania prawdopodobieństwa obecności osób na zdyskretyzowanej płaszczyźnie terenu (np.
+podłodze) na podstawie obrazów binarnych uzyskanych w~procesie odejmowania tła, w~sposób niejawny
+radząc sobie z~problemem okluzji \cite{fleuret2008, mandeljc2013tracking}. W~podejściu tym
+wykorzystano probabilistyczny model generatywny obrazu oraz przybliżenie wariacyjne pola średniego
+(\textit{ang. mean-field approximation}), aby rozwiązać zadanie estymacji prawdopodobieństwa
+\textit{a posteriori} $P(X \mid B)$, gdzie $X$ opisuje wektor stanów mapy zajętości, a~$B$ zbiór
+obrazów binarnych ze wszystkich kamer \cite{fleuret2008}.
+
+\paragraph{Zmienne i założenia modelu}
+
+Płaszczyzna terenu podlega dyskretyzacji na siatkę $G$ komórek, z~których każda reprezentuje
+potencjalną lokalizację osoby~\cite{fleuret2008}. Dla każdej komórki $k \in \{1,\dots,G\}$
+definiuje się binarną zmienną losową $X_k \in \{0,1\}$, gdzie $X_k = 1$ oznacza obecność
+człowieka~\cite{fleuret2008}. Całą mapę zajętości opisuje wektor stanów $X = (X_1,\dots,X_G)$.
+Głównym celem algorytmu jest estymacja prawdopodobieństwa \textit{a posteriori} $P(X \mid B)$
+względem obserwowanych obrazów binarnych $B = (B^1,\dots,B^C)$ pozyskanych z~$C$
+kamer~\cite{fleuret2008, mandeljc2013tracking}.
+
+W~celu uproszczenia obliczeń model zakłada niezależność \textit{a priori} pomiędzy komórkami, tzn.
+$P(X) = \prod_{k=1}^{G} P(X_k)$, oraz przyjmuje stałe, niezwykle rzadkie prawdopodobieństwo
+zajętości pojedynczej komórki, np. $\epsilon_k = P(X_k = 1) \ll 1$~\cite{fleuret2008}.
+
+Dla każdej kamery $c \in \{1,\dots,C\}$ wyznaczany jest obraz binarny $B^c$, uzyskany w~procesie
+wyodrębniania tła (maska pierwszego planu). Algorytm POM buduje dla każdej z~nich syntetyczny obraz
+$A^c$ na podstawie aktualnej mapy zajętości $X$. W~pozycji każdej komórki $k$, dla której $X_k=1$,
+rzutowany jest prostokąt $A^c_k$ przybliżający sylwetkę stojącej osoby, widzianej z~perspektywy
+kamery $c$~\cite{fleuret2008}. Formalnie, wygenerowany obraz syntetyczny jest wynikiem pikselowej
+sumy logicznej (\textit{ang. union}) tych sylwetek:
+\[
+  A^c = \bigoplus_{k=1}^{G} X_k A^c_k
+\]
+
+Przyjmuje się, że poszczególne widoki z~kamer są warunkowo niezależne, a~gęstość prawdopodobieństwa
+obrazu obserwowanego zależy wyłącznie od odpowiadającego mu obrazu
+syntetycznego~\cite{fleuret2008}:
+\[
+  P(B \mid X) = \prod_{c=1}^{C} P(B^c \mid A^c) = \prod_{c=1}^{C} \frac{1}{Z} \exp\!\big(-\Psi(B^c, A^c)\big)
+\]
+gdzie $Z$ to stała normalizacyjna, a~$\Psi(\cdot,\cdot)$ jest miarą zdefiniowanej ad hoc
+„pseudoodległości” pomiędzy obrazami binarnymi.
+
+Miarę $\Psi(B,A)$ zaprojektowano tak, aby nakładała karę za niezgodność pikseli między obrazem
+obserwowanym $B$ a~syntetycznym $A$:
+\[
+  \Psi(B,A) = \frac{1}{\sigma} \frac{\big|B \otimes (1 - A) + (1 - B) \otimes A\big|}{|A|}
+\]
+gdzie $\otimes$ oznacza iloczyn pikselowy (część wspólną), $|A|$ sumę wartości pikseli obrazu $A$
+(pole powierzchni), a~$\sigma$ to parametr skali modelujący jakość algorytmu wyodrębniania
+tła~\cite{fleuret2008}. Intuicyjnie, licznik wzoru zlicza liczbę błędnych pikseli (fałszywe alarmy
+i~pominięcia względem obrazu syntetycznego), natomiast mianownik normalizuje tę wielkość przez pole
+powierzchni prostokąta, co zapobiega faworyzowaniu obiektów o~większych rozmiarach w~procesie
+optymalizacji~\cite{fleuret2008}.
+
+Ponieważ bezpośrednie wyznaczenie dokładnego rozkładu \textit{a posteriori} jest niemożliwe
+obliczeniowo ze względu na wykładniczo rosnącą przestrzeń kombinacji mapy zajętości, autorzy
+algorytmu POM zastosowali przybliżenie wariacyjne pola średniego (\textit{ang. mean-field
+  approximation})~\cite{fleuret2008}. Proces ten polega na poszukiwaniu uproszczonego rozkładu
+prawdopodobieństwa (zakładającego niezależność poszczególnych komórek siatki), który minimalizuje
+dywergencję Kullbacka-Leiblera względem rzeczywistego rozkładu~\cite{fleuret2008}. Prowadzi to do
+układu równań punktu stałego, rozwiązywanego w~sposób iteracyjny. W~celu zapewnienia wysokiej
+wydajności, niezbędnej do przetwarzania sygnału wideo z~wielu kamer, w~praktycznej implementacji
+wykorzystano strukturę obrazów całkowych. Pozwala to na błyskawiczne aktualizowanie
+prawdopodobieństw obecności obiektów w~kolejnych iteracjach, aż do osiągnięcia zbieżności
+modelu~\cite{fleuret2008}.
+
+\paragraph{Interpretacja w kontekście wizji komputerowej}
+
+Kluczową zaletą algorytmu POM jest jego zdolność do naturalnego i~skutecznego radzenia sobie ze
+zjawiskiem okluzji. W~modelu generatywnym obecność obiektu w~jednej komórce „tłumaczy” brak
+widocznych pikseli pierwszego planu dla potencjalnego obiektu znajdującego się tuż za nim, wzdłuż
+tej samej osi projekcji kamery~\cite{fleuret2008}. Pozwala to modelowi na poprawne rozróżnianie
+złożonych konfiguracji osób, zarówno w~sytuacjach silnych skrótów perspektywicznych, jak i~w
+przypadku częściowej utraty informacji z~niektórych kamer~\cite{fleuret2008}. Ponadto,
+wykorzystanie algorytmu POM jako początkowego etapu detekcji na mapie zajętości zapewnia wysoką
+precyzję lokalizacji obiektów we współrzędnych świata \cite{mandeljc2013tracking}. Stanowi to
+podstawę stabilnego śledzenia globalnych trajektorii w~czasie~\cite{mandeljc2013tracking}.
 
 \section{Reidentyfikacja obiektów - Re-ID}
 \label{sec:reidentyfikacja_reid}
@@ -1050,139 +1123,242 @@ projektowania systemu (\textit{ang. privacy by design}):
 \end{itemize}
 
 \section{Rzutowanie na plan terenu (Bird’s-Eye View - BEV) i geometria sceny}
-% To sekcja techniczna łącząca algebrę liniową z praktyką inżynierską — powinna stanowić pomost
-% między kalibracją kamery (sekcja 1) a wielokamerowym śledzeniem (sekcja MTMC).
 
-% Motywacja i cel rzutowania Problem przestrzeni obrazowej: współrzędne pikselowe z różnych kamer są
-% nieporównywalne — ta sama lokalizacja fizyczna ma różne współrzędne ( u , v ) (u,v) w każdej
-% kamerze; nie można wprost obliczać odległości ani prędkości
+Widok z~lotu ptaka (\textit{ang. Bird's-Eye View} -- BEV) polega na rzutowaniu sceny na jedną,
+wspólną płaszczyznę odniesienia, najczęściej na fizyczną płaszczyznę terenu lub jezdni.
+Reprezentacja BEV pozwala na określenie położenia obiektów w~metrycznym układzie współrzędnych, co
+całkowicie uniezależnia analizę od zniekształceń perspektywicznych specyficznych dla pojedynczej
+kamery~\cite{fleuret2008, li2023}.
 
-% Cel rzutowania na plan terenu: sprowadzenie wszystkich detektowanych obiektów do wspólnej
-% metrycznej przestrzeni 2D (podłogi/terenu), gdzie odległości i pozycje są fizycznie
-% interpretowalnie i porównywalne między kamerami
+Współcześnie, w~systemach autonomicznej jazdy, BEV stanowi standardową przestrzeń reprezentacji
+pośredniej (\textit{ang. intermediate representation}). Architektury percepcyjne przekształcają
+surowe dane z~kamer lub sensorów LiDAR do widoku z~lotu ptaka, a~następnie dedykowane moduły
+realizują w~tej zunifikowanej przestrzeni zadania takie jak detekcja obiektów 3D, semantyczna
+segmentacja mapy oraz predykcja trajektorii ruchu~\cite{li2023, zhao2024}.
 
-% Zastosowania w MTMC: fuzja trajektorii z wielu kamer, analiza spatio-temporalna przejść,
-% wizualizacja sceny jako „mapa z lotu ptaka"
+W~kontekście systemów monitoringu wizyjnego (CCTV), rzutowanie na płaszczyznę BEV pełni
+analogiczną, fundamentalną rolę. Umożliwia ono geometryczną fuzję informacji z~wielu kamer w~ramach
+jednego, globalnego układu współrzędnych, co stanowi podstawę do precyzyjnej analizy i~śledzenia
+globalnych trajektorii obiektów w~czasie na planie terenu~\cite{fleuret2008}.
 
-% Model geometryczny kamery Model otworkowy (pinhole camera model): rzutowanie punktu 3D współczynnik
-% pochylenia (skew) — parametry unikalne dla każdej kamery, wyznaczane w procesie kalibracji
+\subsection{Geometryczne rzutowanie na plan terenu i Inverse Perspective Mapping}
 
-% Parametry zewnętrzne (extrinsic parameters): pozycja i orientacja kamery w przestrzeni świata —
-% kluczowe dla rekonstrukcji przestrzennej i rzutowania na plan terenu
+Klasycznym sposobem uzyskania widoku z~lotu ptaka jest rzutowanie obrazu perspektywicznego na
+płaszczyznę terenu za pomocą macierzy homografii. W~podejściu tym zakłada się, że podłoże jest
+idealnie płaskie, a~parametry kamery (macierz wewnętrzna oraz macierz rotacji i~wektor translacji)
+są znane dzięki procesowi kalibracji~\cite{hartleyzisserman, szeliski2022}. Zgodnie z~modelem
+kamery otworkowej, punkt w~przestrzeni trójwymiarowej rzutowany jest na płaszczyznę obrazu przy
+użyciu macierzy projekcji $\mathbf{P} = \mathbf{K}[\mathbf{R} \mid \mathbf{t}]$. Zakładając, że
+rozpatrywane punkty leżą bezpośrednio na płaszczyźnie gruntu (wysokość $Z=0$), przekształcenie to
+redukuje się do macierzy homografii $\mathbf{H}$, która jednoznacznie odwzorowuje współrzędne
+pikselowe obrazu $(u, v)$ na metryczne współrzędne w~układzie planu terenu $(x,
+  y)$~\cite{hartleyzisserman, szeliski2022}.
 
-% Modele dystorsji: dystorsja radialna (barrel/pincushion) i tangencjalna — konieczna korekcja przed
-% rzutowaniem; modele Browna-Conrady'ego
+Technika odwrotnego mapowania perspektywicznego (\textit{ang. Inverse Perspective Mapping} -- IPM)
+polega na zastosowaniu tak wyznaczonej homografii do wszystkich pikseli obrazu
+wejściowego~\cite{li2023}. W~rezultacie uzyskuje się syntetyczny obraz z~lotu ptaka, na którym
+elementy infrastruktury drogowej (np. linie jezdni, pasy ruchu) oraz obiekty prezentowane są
+z~pominięciem zniekształceń perspektywicznych~\cite{jeong2016}. IPM jest powszechnie stosowana
+w~zadaniach związanych z~detekcją pasów i~oznakowania drogowego. Jej główną zaletą jest prostota
+obliczeniowa oraz bezpośrednie oparcie na fizycznym modelu geometrycznym kamery. Fundamentalnym
+ograniczeniem pozostaje jednak wysoka wrażliwość na błędy kalibracji (np. drgania pojazdu
+zmieniające pochylenie kamery) oraz fakt, że założenie o~idealnie płaskim podłożu (\textit{ang.
+  flat-ground assumption}) rzadko bywa w~pełni spełnione w~rzeczywistych warunkach
+drogowych~\cite{jeong2016, li2023}.
 
-% Kalibracja kamery Metody kalibracji: szachownica (chessboard calibration, Zhang 2000) jako
-% standardowe podejście; kalibracja za pomocą punktów referencyjnych w scenie (scene-based
-% calibration) — praktyczna alternatywa dla kamer już zainstalowanych
+\subsection{Siatka BEV i probabilistyczne mapy zajętości}
 
-% Kalibracja dla systemu CCTV: kamery stałe, więc kalibracja jednorazowa; problem zmiany parametrów w
-% czasie (drgania, zmiany temperatury, wandalizm)
+W~praktycznych systemach widok z~lotu ptaka jest zwykle reprezentowany jako siatka komórek
+(\textit{ang. BEV grid}). Płaszczyzna terenu dzielona jest na prostokątne pola o~zadanym rozmiarze
+(np. 10--50\,cm), z~których każda opisuje określony fragment
+przestrzeni~\cite{mandeljc2013tracking}. Klasycznym podejściem, wywodzącym się z~robotyki mobilnej,
+jest tworzenie siatek zajętości (\textit{ang. occupancy grid mapping}). Dla każdej komórki siatki
+szacuje się prawdopodobieństwo, że jest ona zajęta przez przeszkodę lub obiekt. Informacje
+z~różnorodnych czujników (kamery, LiDAR, radar) łączone są w~ramach probabilistycznego modelu,
+a~mapa zajętości jest na bieżąco aktualizowana w~czasie~\cite{mandeljc2013tracking}.
 
-% Kalibracja wielokamerowa (multi-camera calibration): wyznaczenie wspólnego układu współrzędnych
-% świata dla wszystkich kamer sieci; metody ze wspólnym polem widzenia i bez niego (non-overlapping
-% FOV calibration)
+Probabilistyczna mapa zajętości (\textit{ang. Probabilistic Occupancy Map} -- POM) zaproponowana
+przez Fleureta i~in. jest w~istocie szczególnym przypadkiem siatki zajętości na płaszczyźnie
+terenu~\cite{mandeljc2013tracking}. Autorzy dyskretyzują plan sceny na siatkę komórek i~estymują
+prawdopodobieństwo obecności osoby w~każdym z~tych pól na podstawie obrazów binarnych uzyskanych
+w~procesie wyodrębniania tła z~wielu kamer~\cite{fleuret2008}. W~niniejszej pracy siatka BEV jest
+bezpośrednio utożsamiana z~siatką POM: dla każdej komórki $\mathcal{G}_k$ przechowywana jest
+wartość brzegowego prawdopodobieństwa $P(X_k = 1)$, a~wynikowy widok z~lotu ptaka przedstawia
+globalny rozkład zajętości obiektów na planie terenu w~danej chwili czasowej.
 
-% Narzędzia: OpenCV (calibrateCamera, stereoCalibrate), biblioteka Kalibr dla kamer wielokamerowych
+\subsection{Widok z lotu ptaka w systemach autonomicznej jazdy}
 
-% Homografia i rzutowanie perspektywiczne Definicja homografii: przekształcenie rzutowe między dwiema
-% płaszczyznami opisane macierzą H H (3×3, 8 stopni swobody) — gdy płaszczyzna terenu jest płaska,
-% rzutowanie obrazu na grunt jest izomorfizmem rzutowym
+W badaniach nad autonomiczną jazdą widok z lotu ptaka (BEV) stał się jedną z kluczowych przestrzeni
+reprezentacji pośredniej. Sieci neuronowe realizują transformację surowych danych z kamer i
+sensorów LiDAR do przestrzeni BEV, a zadania takie jak detekcja trójwymiarowa, semantyczna
+segmentacja mapy oraz predykcja ruchu pojazdów definiowane są bezpośrednio w tym układzie
+współrzędnych~\cite{li2023, zhao2024}. Najnowsze przeglądy literaturowe podkreślają kilka
+fundamentalnych zalet BEV: przejrzyste odwzorowanie sceny w układzie metrycznym, ułatwienie fuzji
+danych z wielu różnorodnych sensorów, możliwość prostego definiowania stref na drodze (np. pasów,
+skrzyżowań, obszarów wyłączonych z ruchu) oraz intuicyjne wykorzystanie tak zagregowanych
+informacji przez moduły planowania ruchu i sterowania pojazdem~\cite{li2023, zhao2024}.
 
-% Wyznaczanie macierzy homografii: minimum 4 niespółliniowe pary punktów korespondujących (image ↔
-% world); algorytm DLT (Direct Linear Transform) z normalizacją; RANSAC do odrzucenia błędnych
-% korespondencji (outliers)
+Te same cechy odgrywają istotną rolę w wielokamerowych systemach monitoringu wizyjnego (CCTV).
+Widok z lotu ptaka pozwala na mapowanie położenia pieszych i pojazdów na punkty odpowiadające
+rzeczywistym lokalizacjom w przestrzeni fizycznej, całkowicie uniezależniając analizę od
+perspektywy narzucanej przez poszczególne kamery. Dzięki temu możliwa staje się analiza globalnego
+ruchu na planie całej sceny, a nie tylko w obrębie odizolowanych obrazów
+dwuwymiarowych~\cite{fleuret2008}.
 
-% Transformacja odwrotna (BEV → obraz): cv2.warpPerspective — generowanie widoku z góry dla
-% wizualizacji lub sieci neuronowych
+\subsection{Metody BEV oparte na głębokim uczeniu}
 
-% Ograniczenia homografii: zakłada płaski teren; błędy rosną dla obiektów wysokich (głowa osoby vs.
-% stopy) — dyskusja o wyborze punktu referencyjnego (środek ciężkości, punkt kontaktu z podłożem)
+Nowoczesne metody generowania widoku z~lotu ptaka odchodzą od bezpośredniego polegania na sztywnej
+geometrii na rzecz modeli opartych na głębokich sieciach neuronowych. Uczą się one transformacji
+z~widoku perspektywicznego do przestrzeni BEV w~sposób czysto oparty na danych, bez konieczności
+ręcznego definiowania wszystkich kroków rzutowania~\cite{li2023}.
 
-% Wielowarstwowa homografia i rozszerzenia Problem wysokości obiektów: różne punkty na sylwetce leżą
-% na różnych wysokościach nad gruntem → różne macierze homografii dla różnych warstw wysokości
-% (multi-layer homography, np. Peng et al.)
+Przełomowym przykładem metody opartej na estymacji głębi (podejście 2D-3D) jest architektura
+\textbf{Lift, Splat, Shoot (LSS)}~\cite{philion2020}. W~fazie \textit{Lift}, model estymuje
+dyskretny rozkład głębi dla każdego piksela obrazu, a~następnie „podnosi” dwuwymiarowe cechy do
+postaci trójwymiarowego ostrosłupa widzenia kamery (\textit{ang. viewing frustum})~\cite{zhao2024}.
+Następnie, w~fazie \textit{Splat}, cechy te są rzutowane i~agregowane na płaską siatkę BEV. Z~kolei
+faza \textit{Shoot} polega na wyznaczeniu z~tej reprezentacji mapy kosztów (\textit{ang. cost
+  map}), służącej do semantycznej segmentacji sceny oraz planowania bezkolizyjnych trajektorii ruchu
+pojazdu~\cite{philion2020, zhao2024}.
 
-% Podejście 3D (3D scene reconstruction): pełna rekonstrukcja 3D sceny z wielu kamer — bardziej
-% dokładna, lecz kosztowna obliczeniowo; metody SfM (Structure from Motion), MVS (Multi-View Stereo)
+Alternatywnym, wysoce skutecznym podejściem jest model \textbf{BEVFormer}. Wykorzystuje on
+architekturę Transformerów do bezpośredniego generowania reprezentacji BEV z~sekwencji obrazów
+wielokamerowych~\cite{li2022bevformer}. Model ten wprowadza siatkę wyuczalnych wektorów zapytań
+(\textit{ang. grid-shaped BEV queries}), z~których każdy odpowiada konkretnej komórce w~przestrzeni
+BEV. Stosując zaawansowane mechanizmy atencji przestrzennej (\textit{ang. spatial cross-attention})
+oraz czasowej (\textit{ang. temporal self-attention}), sieć elastycznie łączy i~filtruje informacje
+z~różnych ujęć kamer oraz wcześniejszych klatek wideo~\cite{li2022bevformer}.
 
-% Probabilistyczna Mapa Zajętości (Probabilistic Occupancy Map): dla każdej komórki siatki na planie
-% terenu oblicza się prawdopodobieństwo obecności obiektu jako iloczyn rzutowanych masek binarnych z
-% wielu kamer — fundamentalne podejście Fleureta et al. (TPAMI 2008)
+W~przeciwieństwie do klasycznej metody IPM, rozwiązania oparte na głębokim uczeniu wykazują
+znacznie mniejszą wrażliwość na błędy kalibracji czujników i~lepiej radzą sobie w~scenach,
+w~których założenie o~idealnie płaskim podłożu nie jest spełnione~\cite{li2023}. Ich główną wadą
+pozostaje jednak konieczność posiadania potężnych zbiorów danych z~dokładnymi adnotacjami
+w~przestrzeni 3D lub BEV, a~także charakterystyczny dla modeli głębokich brak pełnej przejrzystości
+i~interpretowalności procesu decyzyjnego~\cite{li2023, zhao2024}.
 
-% Siatka BEV (BEV grid): dyskretyzacja planu terenu na komórki o rozmiarze np. 10×10 cm; kompromis
-% między dokładnością a kosztem obliczeniowym
+\subsection{Zastosowanie widoku z góry w systemach wielokamerowych MTMC}
 
-% BEV w nowoczesnych metodach głębokiego uczenia BEV jako wejście do sieci neuronowych: zamiast
-% rzutowania geometrycznego — nauczalne moduły transformacji perspektywy; BEVNet, IPM (Inverse
-% Perspective Mapping)
+W~systemach śledzenia wielu obiektów w~sieci kamer (MTMC), widok z~lotu ptaka (BEV) stanowi
+naturalną, wspólną przestrzeń reprezentacji. Rzutując detekcje z~poszczególnych kamer na plan
+terenu, trajektorie obiektów można przedstawić jako sekwencje punktów w~jednej, globalnej
+i~metrycznej siatce. Ułatwia to późniejsze kojarzenie ścieżek między kamerami oraz modelowanie
+prawdopodobieństwa przejść~\cite{fleuret2008}. Probabilistyczna mapa zajętości (POM) dostarcza
+w~każdej chwili precyzyjnych informacji o~tym, które komórki siatki są zajęte. Na tej podstawie
+algorytmy mogą definiować strefy wejścia i~wyjścia, analizować główne kierunki ruchu, a~także
+prognozować czas pojawienia się obiektu w~polu widzenia kolejnej kamery~\cite{fleuret2008}.
 
-% Transformer-based BEV: BEVFormer (2022) — wielokamerowe BEV dla autonomicznej jazdy; architektura
-% adaptowalna do stacjonarnych sieci kamer CCTV
-
-% Zalety podejścia opartego na DL: odporność na niedoskonałości kalibracji, możliwość uczenia się na
-% rzeczywistych danych, lepsza obsługa niespłaszczonego terenu
-
-% Ograniczenia: potrzeba dużych zbiorów z anotacjami 3D lub BEV, trudna interpretowalność
-% (explainability)
-
-% Analiza spatio-temporalna w przestrzeni BEV Trajektoria w planie terenu: po rzutowaniu każdy
-% tracklet z kamery staje się sekwencją punktów 2D w metrycznej przestrzeni; możliwa analiza
-% prędkości, kierunku ruchu, stref wejścia/wyjścia
-
-% Strefa wejścia/wyjścia (entry/exit zones): manualna lub automatyczna detekcja regionów, przez które
-% obiekty wchodzą i wychodzą z pola widzenia kamery — kluczowe dla modelu przejść MTMC
-
-% Predykcja pozycji między kamerami: jeśli znana jest mapa topologiczna sieci kamer, można szacować
-% spodziewaną pozycję i czas pojawienia się obiektu w kolejnej kamerze na podstawie jego ostatniej
-% pozycji w BEV
-
-% Wizualizacja sceny: plan terenu jako interfejs operatora systemu — nakładanie trajektorii
-% wszystkich obiektów na mapę lokalizacji (schemat budynku, zdjęcie lotnicze)
-
-% Sugestia: tę sekcję warto umieścić po sekcji o kalibracji kamery (jako jej naturalne rozwinięcie),
-% a przed sekcją MTMC — ponieważ rzutowanie na plan terenu jest technicznym fundamentem fuzji danych
-% wielokamerowych. Możesz też zawrzeć tutaj własny schemat blokowy ilustrujący przepływ: obraz →
-% detekcja bounding-box → punkt kontaktu z podłożem → homografia → pozycja BEV.
-
-% Definicja MTMC (Multi-Target Multi-Camera Tracking): problem utrzymania globalnych identyfikatorów
-% obiektów w sieci kamer o pokrywających się lub niepokrywających polach widzenia (overlapping /
-% non-overlapping FOV)
-
-% Architektura systemu MTMC:
-
-% Moduł detekcji (per-kamera)
-
-% Lokalne śledzenie SCT (per-kamera, wynik: tracklets)
-
-% Globalne skojarzenie między kamerami (inter-camera association)
-
-% Zarządzanie globalnym ID
-
-% Rzutowanie na plan terenu (ground plane projection): kalibracja kamery + homografia → wspólna
-% metryczna przestrzeń 2D; probabilistyczna mapa zajętości (Probabilistic Occupancy Map, Fleuret et
-% al., 2008); analiza spatio-temporalna przejść między kamerami
-
-% Modele przejść między kamerami (camera transition model): rozkład czasu przejść (transition time
-% distribution), topologia sieci kamer, strefy wejścia/wyjścia (entry/exit zones)
-
-% Fuzja cech wizualnych i spatio-temporalnych: łączenie embeddingów Re-ID z informacją o czasie i
-% przewidywanej pozycji — redukuje liczbę błędnych skojarzeń
-
-% Podejścia grafowe i optymalizacyjne: graph-based multi-cut, sieć przepływów (flow network, Berclaz
-% et al.), algorytmy klasteryzacji (hierarchical clustering, agglomerative clustering) trackletów
-
-% Synchronizacja i kalibracja czasowa kamer: problem desynchronizacji strumieni wideo, timestamp
-% alignment
-
-% Benchmarki MTMC: DukeMTMC (wycofany z przyczyn etycznych), CityFlow (CVPR 2019), AICity Challenge —
-% opis zbiorów i protokołów ewaluacyjnych
-
-% Wyzwania otwarte: skalowalność na dziesiątki kamer, śledzenie w scenach z dużym tłumem,
-% ograniczenia obliczeniowe dla systemów real-time, prywatność danych
+Jak zostanie zaprezentowane w~dalszej części pracy, docelowy system MTMC wykorzystuje widok z~lotu
+ptaka jako absolutny fundament fuzji danych. Moduły śledzenia lokalnego (SCT) generują dla każdej
+kamery niezależne trajektorie w~przestrzeni obrazu dwuwymiarowego, które następnie są
+transformowane do układu BEV. Z~kolei moduł globalnej asocjacji kamer (MCA) łączy ze sobą cechy
+wizualne (deskryptory Re-ID) oraz informacje czasowo-przestrzenne w~zunifikowanej przestrzeni
+z~lotu ptaka, aby skutecznie utrzymać spójne identyfikatory obiektów w~całej monitorowanej sieci
+monitoringu~\cite{woo2024, riu2024}.
 
 \chapter{Przegląd istniejących rozwiązań}\label{chap:przegląd_rozwiązań}
+
+W klasycznym ujęciu, architektura potoku przetwarzania danych MTMC dzieli się na dwa główne etapy:
+lokalne śledzenie wewnątrz poszczególnych kamer (ang. Single-Camera Tracking – SCT), generujące
+krótkie trajektorie (ang. tracklets), oraz późniejszą, globalną asocjację między kamerami (ang.
+Multi-Camera Association – MCA), w której informacje wizualne i czasowo-przestrzenne są integrowane
+w celu nadania unikalnych identyfikatorów. Wdrożenie tak zaawansowanego potoku na urządzeniach
+klasy brzegowej lub stacjach roboczych o ograniczonej charakterystyce energetycznej wymusza
+specyficzne, rygorystyczne podejście do doboru technologii oprogramowania. Niniejszy rozdział
+stanowi przegląd istniejących rozwiązań algorytmicznych oraz architektonicznych, a także
+uzasadnienie wyboru stosu technologicznego dla systemu MTMC budowanego w środowisku macOS. Docelową
+platformą uruchomieniową jest komputer MacBook Pro wyposażony w układ Apple Silicon M5. Z uwagi na
+unikalną specyfikę architektury sprzętowej Apple, standardowe i powszechnie stosowane w przemyśle
+rozwiązania oparte na środowisku NVIDIA CUDA muszą zostać zastąpione alternatywnym stosem
+optymalizacyjnym, gwarantującym najwyższą wydajność przy wykorzystaniu akceleratorów wbudowanych w
+układ M5. Dokonano tu szczegółowej ewaluacji dostępnych języków programowania, modeli detekcji z
+rodziny YOLO, głębokich architektur transformatorowych dostępnych za pośrednictwem platformy
+Hugging Face oraz klasycznych algorytmów wizji komputerowej w ramach biblioteki OpenCV.
+
+\section{Specyfika sprzętu oraz środowiska programistycznego}
+\label{sec:ograniczenia_sprzętowe}
+
+\subsection{Architektura sprzętowa: Apple Silicon M5 a akceleracja obliczeń tensorowych}
+
+Głównym czynnikiem determinującym architekturę opisywanego systemu jest zastosowanie układu SoC
+(\textit{ang. System-on-a-Chip}) z~rodziny Apple Silicon M5. Architektura ta wprowadza zmianę
+w~sposobie zarządzania pamięcią operacyjną w~porównaniu do klasycznych środowisk opartych na
+architekturze x86 i~dedykowanych kartach graficznych, co bezpośrednio wpływa na wydajność
+przetwarzania modeli głębokiego uczenia~\cite{feng2025}.
+
+Układy z~serii M wykorzystują zunifikowaną architekturę pamięci (\textit{ang. Unified Memory
+  Architecture} -- UMA). Oznacza to, że procesor centralny (CPU), wielordzeniowy procesor graficzny
+(GPU) oraz sprzętowy akcelerator macierzowy (\textit{ang. Neural Engine}) współdzielą tę samą,
+wysoce przepustową pamięć RAM~\cite{feng2025, solovyova2026}. W~klasycznych systemach
+wielokamerowych, opartych np. na systemie Ubuntu i~kartach z~serii NVIDIA RTX, konieczność ciągłego
+przesyłania zdekodowanych klatek obrazu z~pamięci operacyjnej do pamięci karty graficznej (VRAM)
+przez magistralę PCIe stanowi istotne ograniczenie wydajności potoku przetwarzania (\textit{ang.
+  pipeline})~\cite{solovyova2026}.
+
+Architektura UMA całkowicie eliminuje narzut czasu związany z~kopiowaniem tych danych. Układy
+obliczeniowe uzyskują bezpośredni dostęp do surowych klatek wideo natychmiast po ich zdekodowaniu
+przez procesor główny~\cite{solovyova2026}. Zmniejszenie tych opóźnień znacznie przyspiesza zarówno
+procesy wstępnego przetwarzania obrazu, jak i~samo wnioskowanie (\textit{ang. inference}) na
+modelach wizyjnych~\cite{solovyova2026}.
+
+Układy Apple Silicon posiadają również sprzętowy akcelerator \textit{(ang. Neural Engine)},
+zoptymalizowany pod kątem operacji mnożenia macierzy (\textit{ang. Matrix Multiplication} --
+MatMul), które stanowią fundament obliczeniowy głębokich sieci neuronowych~\cite{solovyova2026}.
+Aby w pełni wykorzystać ten potencjał, firma Apple opracowała interfejs programistyczny
+\textit{(ang. Metal Performance Shaders -- MPS)}~\cite{feng2025}. Działa on jako niskopoziomowa
+alternatywa dla przemysłowego standardu NVIDIA CUDA, bezpośrednio mapując operacje uczenia
+maszynowego na architekturę układów z~serii M~\cite{feng2025, aliyev2025}.
+
+Należy jednak zaznaczyć, że wsparcie popularnych frameworków (m.in. \textit{PyTorch}) dla
+środowiska MPS wciąż znajduje się w~fazie rozwoju i~posiada pewne braki
+optymalizacyjne~\cite{feng2025, aliyev2025}. Brak natywnej implementacji specyficznych operatorów
+matematycznych w~API Metal skutkuje tzw. cichym przeniesieniem obliczeń na procesor główny
+(\textit{ang. silent CPU fallback}). Może to powodować zatory w~potoku przetwarzania. Ograniczenie
+to narzuca konieczność selekcji modeli i~wyboru wyłącznie takich architektur, których wszystkie
+operacje są w~pełni wspierane sprzętowo przez GPU/Neural Engine. Jak zostanie to szerzej omówione
+w~dalszej części pracy, uwarunkowanie to bezpośrednio zdeterminowało odrzucenie najnowszych
+iteracji modeli YOLO w~niniejszej pracy.
+
+\subsection{Wybrane środowisko programistyczne: Język Python i~środowisko Miniforge}
+
+Jako główną warstwę aplikacyjną systemu MTMC wybrano język Python, funkcjonujący w wirtualnym
+środowisku Miniforge, będącym dystrybucją pakietów Conda dla architektury
+ARM64~\cite{medium_miniforge}. Python stanowi obecnie standard w dziedzinie sztucznej inteligencji,
+zapewniając dostęp do najszerszego ekosystemu bibliotek analitycznych. Mimo relatywnie niskiej
+wydajności tego języka w~zadaniach obliczeniowych, w~kontekście nowoczesnych potoków głębokiego
+uczenia pełni on funkcję wysokopoziomowego interfejsu (\textit{ang. wrapper}). Złożone obliczeniowo
+operacje matematyczne są delegowane do zoptymalizowanych, bibliotek zaimplementowanych w~językach
+C/C++ i wykonywane bezpośrednio na dedykowanych akceleratorach sprzętowych.
+
+Oficjalne wdrożenie pełnego wsparcia backendu MPS do najpopularniejszego frameworka uczenia
+maszynowego -- \textit{PyTorch} ~\cite{apple_pytorch, feng2025}, uzasadnia wybór tego rozwiązania.
+Dzięki temu ciężar operacji tensorowych może zostać przeniesiony bezpośrednio na układ graficzny
+procesora M5, za pomocą zaledwie jednej instrukcji w~kodzie, definiując urządzenie sprzętowe jako
+\texttt{device = torch.device("mps")}~\cite{apple_pytorch}. Bezpośrednia integracja omija
+konieczność konwersji modeli do formatów pośrednich (np. CoreML) i~pozwala na płynną współpracę z
+kluczowymi bibliotekami ekosystemu Python. Należą do nich m.in. NumPy - do wektoryzacji operacji w
+zunifikowanej pamięci UMA, SciPy - do rozwiązywania problemów asocjacyjnych na grafach
+dwudzielnych, oraz wbudowany moduł \texttt{multiprocessing}, wykorzystywany do izolowania procesów
+dekodowania strumieni H.264 z~poszczególnych kamer.
+
+\subsubsection{Technologie odrzucone}
+
+Podczas projektowania systemu opartego na układach z~rodziny Apple Silicon, świadomie zrezygnowano
+z~wykorzystania języka C++ jako głównego środowiska programistycznego. W~docelowych systemach
+wbudowanych dla monitoringu wizyjnego C++ gwarantuje najwyższą kontrolę i~przewidywalność
+zarządzania stertą (\textit{ang. heap}) oraz pamięcią podręczną, jednak na platformie macOS
+wymuszałoby to implementację procesów wnioskowania poprzez niskopoziomowe interfejsy lub adaptację
+lekkich silników brzegowych. Co więcej, implementacja najnowszych architektur opartych na
+transformatorach -- które stanowią obecnie fundament nowoczesnych modułów reidentyfikacji
+obiektów~\cite{he2021transreid} -- w~języku C++ i frameworku Metal wydłużyłaby czas programowania
+o~rzędy wielkości. Nie przyniosłoby to przy tym współmiernych zysków dla całkowitej wydajności
+systemu~\cite{feng2025}.
+
+Z~analogicznych przyczyn, podyktowanych przede wszystkim brakiem nowoczesnych, oficjalnie
+wspieranych przez społeczność dowiązań (\textit{ang. bindings}) do interfejsu MPS, odrzucono
+również środowiska Java oraz MATLAB. Ponadto, jak uzasadniono we wcześniejszych podrozdziałach,
+definitywnie porzucono architekturę NVIDIA CUDA oraz TensorRT ze względu na ich fizyczną i
+programową niekompatybilność z~układem SoC M5~\cite{aliyev2025}.
+
 \chapter{Implementacja systemu śledzenia i reidentyfikacji}\label{chap:implementacja}
 \chapter{Integracja widoku wielokamerowego i rzutowanie na mapę}\label{chap:integracja_mapy}
 \chapter{Badanie i analiza efektywności systemu}\label{chap:badanie_efektywności}

@@ -1,10 +1,10 @@
-This is XeTeX, Version 3.141592653-2.6-0.999998 (TeX Live 2026) (preloaded format=xelatex 2026.5.14)  30 JUN 2026 14:25
+This is XeTeX, Version 3.141592653-2.6-0.999998 (TeX Live 2026) (preloaded format=xelatex 2026.7.6)  29 JUL 2026 15:19
 entering extended mode
  restricted \write18 enabled.
  file:line:error style messages enabled.
  %&-line parsing enabled.
-**/Users/nturska/Desktop/Praca_dyplomowa/EE-dyplom
-(/Users/nturska/Desktop/Praca_dyplomowa/EE-dyplom.tex
+**/Users/natalia/Desktop/MSc-thesis---Multi-Camera-Multi-Object-tracking-with-map-integration/EE-dyplom
+(/Users/natalia/Desktop/MSc-thesis---Multi-Camera-Multi-Object-tracking-with-map-integration/EE-dyplom.tex
 LaTeX2e <2025-11-01>
 L3 programming layer <2026-01-19>
 (./EE-dyplom.cls
@@ -1580,69 +1580,59 @@ Underfull \hbox (badness 1082) in paragraph at lines 116--122
 
 File: rysunki/background-substraction.jpg Graphic file (type bmp)
 <rysunki/background-substraction.jpg>
-[5] [6] [7] [8] [9] [10] [11] [12] [13] [14] [15] [16] [17] [18] [19] [20] [21]
+[5] [6] [7] [8] [9] [10] [11] [12] [13] [14] [15] [16] [17] [18] [19] [20] [21] [22] [23] [24] [25] [26] [27] [28] [29] [30] [31] [32] [33] [34
 
-LaTeX Warning: Citation '' on page 22 undefined on input line 840.
-
-
-LaTeX Warning: Citation '' on page 22 undefined on input line 850.
-
-
-LaTeX Warning: Citation '' on page 22 undefined on input line 855.
-
-[22] [23] [24] [25] [26] [27] [28]
+]
 Rozdział 3.
-[29
-
-] [30
+[35] [36] [37] [38
 
 ]
 Rozdział 4.
-[31] [32
+[39] [40
 
 ]
 Rozdział 5.
-[33] [34
+[41] [42
 
 ]
 Rozdział 6.
-[35] [36
+[43] [44
 
 ]
 Rozdział 7.
-) [37] [38
+) [45] [46
 
-] [39
+] [47
 
-] [40] [41] [42] [43] [44] (./symbole.tex)
+] [48] [49] [50] [51] [52] [53] [54
+
+] (./symbole.tex)
 No file EE-dyplom.gls.
 No file EE-dyplom.acr.
 No file EE-dyplom.sls.
-[45
-
-] [46
+[55] [56
 
 ] (./EE-dyplom.lof)
 \tf@lof=\write11
 \openout11 = `EE-dyplom.lof'.
 
- [47] [48
+ [57] [58
 
 ] (./EE-dyplom.lot)
 \tf@lot=\write12
 \openout12 = `EE-dyplom.lot'.
 
- [49] [50
+ [59] [60
 
 ] (./EE-dyplom.app)
 \tf@app=\write13
 \openout13 = `EE-dyplom.app'.
 
- (./załączniki.tex [51] [52
+ (./załączniki.tex [61] [62
 
-] [53] [54
+] [63] [64
 
-]) [55] (./EE-dyplom.aux)
+]) [65] (./EE-dyplom.aux)
  ***********
 LaTeX2e <2025-11-01>
 L3 programming layer <2026-01-19>
@@ -1652,18 +1642,18 @@ L3 programming layer <2026-01-19>
 LaTeX Font Warning: Some font shapes were not available, defaults substituted.
 
 Package rerunfilecheck Info: File `EE-dyplom.out' has not changed.
-(rerunfilecheck)             Checksum: 20800EC95A6592491D175D8F79362330;12300.
+(rerunfilecheck)             Checksum: C0CF67D9BE2041ECAA5D1771A52233F0;15026.
 Package logreq Info: Writing requests to 'EE-dyplom.run.xml'.
 \openout1 = `EE-dyplom.run.xml'.
 
  ) 
 Here is how much of TeX's memory you used:
- 46887 strings out of 468168
- 978321 string characters out of 5432815
- 2149529 words of memory out of 5000000
- 74830 multiletter control sequences out of 15000+600000
+ 46928 strings out of 468168
+ 980312 string characters out of 5432816
+ 2152320 words of memory out of 5000000
+ 74871 multiletter control sequences out of 15000+600000
  633857 words of font info for 128 fonts, out of 8000000 for 9000
  1348 hyphenation exceptions out of 8191
- 114i,12n,131p,2541b,6841s stack positions out of 10000i,1000n,20000p,200000b,200000s
+ 114i,12n,131p,2594b,6841s stack positions out of 10000i,1000n,20000p,200000b,200000s
 
-Output written on EE-dyplom.pdf (63 pages).
+Output written on EE-dyplom.pdf (73 pages).

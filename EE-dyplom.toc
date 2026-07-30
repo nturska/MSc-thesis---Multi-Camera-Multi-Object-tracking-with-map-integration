@@ -37,24 +37,35 @@
 \contentsline {section}{\numberline {2.4}Systemy wielokamerowe - MTMC}{20}{section.2.4}%
 \contentsline {subsection}{\numberline {2.4.1}Wprowadzenie do problematyki wielokamerowego śledzenia obiektów}{20}{subsection.2.4.1}%
 \contentsline {subsection}{\numberline {2.4.2}Standardowa architektura potoku przetwarzania danych MTMC}{21}{subsection.2.4.2}%
-\contentsline {subsection}{\numberline {2.4.3}Probabilistyczna mapa zajętości (POM) i problem rzutowania geometrycznego}{22}{subsection.2.4.3}%
+\contentsline {subsection}{\numberline {2.4.3}Problem rzutowania geometrycznego}{22}{subsection.2.4.3}%
 \contentsline {subsection}{\numberline {2.4.4}Matematyczne sformułowanie algorytmu POM}{23}{subsection.2.4.4}%
-\contentsline {section}{\numberline {2.5}Reidentyfikacja obiektów - Re-ID}{23}{section.2.5}%
-\contentsline {subsection}{\numberline {2.5.1}Definicja i sformułowanie problemu reidentyfikacji}{23}{subsection.2.5.1}%
-\contentsline {subsection}{\numberline {2.5.2}Klasyczne podejścia oparte na cechach projektowanych ręcznie}{24}{subsection.2.5.2}%
-\contentsline {subsection}{\numberline {2.5.3}Uczenie reprezentacji metrycznych i sieci syjamskie}{24}{subsection.2.5.3}%
-\contentsline {subsection}{\numberline {2.5.4}Architektury splotowe (CNN) dedykowane do zadań Re-ID}{25}{subsection.2.5.4}%
-\contentsline {subsection}{\numberline {2.5.5}Architektury oparte na Transformerach (SOTA)}{26}{subsection.2.5.5}%
-\contentsline {subsection}{\numberline {2.5.6}Problem rozbieżności dziedzin i adaptacja bez nadzoru (UDA)}{26}{subsection.2.5.6}%
-\contentsline {subsection}{\numberline {2.5.7}Specyfika reidentyfikacji pojazdów w odniesieniu do osób}{27}{subsection.2.5.7}%
-\contentsline {subsection}{\numberline {2.5.8}Prywatność i alternatywne metody identyfikacji}{28}{subsection.2.5.8}%
-\contentsline {section}{\numberline {2.6}Rzutowanie na plan terenu (Bird’s-Eye View - BEV) i geometria sceny}{28}{section.2.6}%
-\contentsline {chapter}{\numberline {3}Przegląd istniejących rozwiązań}{29}{chapter.3}%
-\contentsline {chapter}{\numberline {4}Implementacja systemu śledzenia i reidentyfikacji}{31}{chapter.4}%
-\contentsline {chapter}{\numberline {5}Integracja widoku wielokamerowego i rzutowanie na mapę}{33}{chapter.5}%
-\contentsline {chapter}{\numberline {6}Badanie i analiza efektywności systemu}{35}{chapter.6}%
-\contentsline {chapter}{\numberline {7}Podsumowanie i wnioski}{37}{chapter.7}%
-\contentsline {chapter}{Bibliografia}{39}{section*.16}%
-\contentsline {chapter}{Wykaz skrótów i symboli}{45}{chapter*.18}%
-\contentsline {chapter}{Spis rysunków}{47}{chapter*.19}%
-\contentsline {chapter}{Spis tabel}{49}{chapter*.20}%
+\contentsline {paragraph}{Zmienne i założenia modelu}{23}{section*.16}%
+\contentsline {paragraph}{Interpretacja w kontekście wizji komputerowej}{24}{section*.17}%
+\contentsline {section}{\numberline {2.5}Reidentyfikacja obiektów - Re-ID}{24}{section.2.5}%
+\contentsline {subsection}{\numberline {2.5.1}Definicja i sformułowanie problemu reidentyfikacji}{24}{subsection.2.5.1}%
+\contentsline {subsection}{\numberline {2.5.2}Klasyczne podejścia oparte na cechach projektowanych ręcznie}{25}{subsection.2.5.2}%
+\contentsline {subsection}{\numberline {2.5.3}Uczenie reprezentacji metrycznych i sieci syjamskie}{26}{subsection.2.5.3}%
+\contentsline {subsection}{\numberline {2.5.4}Architektury splotowe (CNN) dedykowane do zadań Re-ID}{27}{subsection.2.5.4}%
+\contentsline {subsection}{\numberline {2.5.5}Architektury oparte na Transformerach (SOTA)}{27}{subsection.2.5.5}%
+\contentsline {subsection}{\numberline {2.5.6}Problem rozbieżności dziedzin i adaptacja bez nadzoru (UDA)}{28}{subsection.2.5.6}%
+\contentsline {subsection}{\numberline {2.5.7}Specyfika reidentyfikacji pojazdów w odniesieniu do osób}{29}{subsection.2.5.7}%
+\contentsline {subsection}{\numberline {2.5.8}Prywatność i alternatywne metody identyfikacji}{29}{subsection.2.5.8}%
+\contentsline {section}{\numberline {2.6}Rzutowanie na plan terenu (Bird’s-Eye View - BEV) i geometria sceny}{30}{section.2.6}%
+\contentsline {subsection}{\numberline {2.6.1}Geometryczne rzutowanie na plan terenu i Inverse Perspective Mapping}{30}{subsection.2.6.1}%
+\contentsline {subsection}{\numberline {2.6.2}Siatka BEV i probabilistyczne mapy zajętości}{31}{subsection.2.6.2}%
+\contentsline {subsection}{\numberline {2.6.3}Widok z lotu ptaka w systemach autonomicznej jazdy}{31}{subsection.2.6.3}%
+\contentsline {subsection}{\numberline {2.6.4}Metody BEV oparte na głębokim uczeniu}{32}{subsection.2.6.4}%
+\contentsline {subsection}{\numberline {2.6.5}Zastosowanie widoku z góry w systemach wielokamerowych MTMC}{32}{subsection.2.6.5}%
+\contentsline {chapter}{\numberline {3}Przegląd istniejących rozwiązań}{35}{chapter.3}%
+\contentsline {section}{\numberline {3.1}Specyfika sprzętu oraz środowiska programistycznego}{35}{section.3.1}%
+\contentsline {subsection}{\numberline {3.1.1}Architektura sprzętowa: Apple Silicon M5 a akceleracja obliczeń tensorowych}{35}{subsection.3.1.1}%
+\contentsline {subsection}{\numberline {3.1.2}Wybrane środowisko programistyczne: Język Python i~środowisko Miniforge}{36}{subsection.3.1.2}%
+\contentsline {subsubsection}{Technologie odrzucone}{37}{section*.18}%
+\contentsline {chapter}{\numberline {4}Implementacja systemu śledzenia i reidentyfikacji}{39}{chapter.4}%
+\contentsline {chapter}{\numberline {5}Integracja widoku wielokamerowego i rzutowanie na mapę}{41}{chapter.5}%
+\contentsline {chapter}{\numberline {6}Badanie i analiza efektywności systemu}{43}{chapter.6}%
+\contentsline {chapter}{\numberline {7}Podsumowanie i wnioski}{45}{chapter.7}%
+\contentsline {chapter}{Bibliografia}{47}{section*.19}%
+\contentsline {chapter}{Wykaz skrótów i symboli}{55}{chapter*.21}%
+\contentsline {chapter}{Spis rysunków}{57}{chapter*.22}%
+\contentsline {chapter}{Spis tabel}{59}{chapter*.23}%
