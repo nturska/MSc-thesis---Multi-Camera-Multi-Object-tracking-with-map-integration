@@ -104,6 +104,44 @@
       \verb https://developer.apple.com/metal/pytorch/
       \endverb
     \endentry
+    \entry{bazzani2013}{article}{}{}
+      \name{author}{3}{}{%
+        {{hash=a5aa68f5124b30a87c646a09d8e94fef}{%
+           family={Bazzani},
+           familyi={B\bibinitperiod},
+           given={Loris},
+           giveni={L\bibinitperiod}}}%
+        {{hash=eabe2d76338f7a8e4557137e764c1d94}{%
+           family={Cristani},
+           familyi={C\bibinitperiod},
+           given={Marco},
+           giveni={M\bibinitperiod}}}%
+        {{hash=2d84c93e1bae3c986fe80c55dbd6224f}{%
+           family={Murino},
+           familyi={M\bibinitperiod},
+           given={Vittorio},
+           giveni={V\bibinitperiod}}}%
+      }
+      \strng{namehash}{f2b2fcfb26ba1ba129b685c6d8165d4c}
+      \strng{fullhash}{0fbc61ab51c74c640011eed9f4be4b56}
+      \strng{fullhashraw}{0fbc61ab51c74c640011eed9f4be4b56}
+      \strng{bibnamehash}{0fbc61ab51c74c640011eed9f4be4b56}
+      \strng{authorbibnamehash}{0fbc61ab51c74c640011eed9f4be4b56}
+      \strng{authornamehash}{f2b2fcfb26ba1ba129b685c6d8165d4c}
+      \strng{authorfullhash}{0fbc61ab51c74c640011eed9f4be4b56}
+      \strng{authorfullhashraw}{0fbc61ab51c74c640011eed9f4be4b56}
+      \field{sortinit}{B}
+      \field{sortinithash}{d7095fff47cda75ca2589920aae98399}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{journaltitle}{Computer Vision and Image Understanding}
+      \field{number}{2}
+      \field{title}{Symmetry-driven accumulation of local features for human characterization and re-identification}
+      \field{volume}{117}
+      \field{year}{2013}
+      \field{pages}{130\bibrangedash 144}
+      \range{pages}{15}
+    \endentry
     \entry{bernardin2008}{article}{}{}
       \name{author}{2}{}{%
         {{hash=321dadc6da173dee7d0ef648b8ed3587}{%
@@ -1801,6 +1839,52 @@
       \verb 10.1007/978-3-319-46448-0_2
       \endverb
     \endentry
+    \entry{mallot1991}{article}{}{}
+      \name{author}{4}{}{%
+        {{hash=7df455a385b48cd066f36bd928537439}{%
+           family={Mallot},
+           familyi={M\bibinitperiod},
+           given={Hanspeter\bibnamedelima A},
+           giveni={H\bibinitperiod\bibinitdelim A\bibinitperiod}}}%
+        {{hash=b5bfea27864db1c0ed528a3bf391f860}{%
+           family={Bülthoff},
+           familyi={B\bibinitperiod},
+           given={Heinrich\bibnamedelima H},
+           giveni={H\bibinitperiod\bibinitdelim H\bibinitperiod}}}%
+        {{hash=4f0629d41f536ebdcf1d49bdaca1597f}{%
+           family={Little},
+           familyi={L\bibinitperiod},
+           given={JJ},
+           giveni={J\bibinitperiod}}}%
+        {{hash=6fa155d4c74fc499116369b70a7ad8bc}{%
+           family={Bohrer},
+           familyi={B\bibinitperiod},
+           given={Stefan},
+           giveni={S\bibinitperiod}}}%
+      }
+      \list{publisher}{1}{%
+        {Springer}%
+      }
+      \strng{namehash}{9097194d46cc4b9d84671e3ae7d18c44}
+      \strng{fullhash}{b372d6d16ca15a33b0210406b5758d64}
+      \strng{fullhashraw}{b372d6d16ca15a33b0210406b5758d64}
+      \strng{bibnamehash}{b372d6d16ca15a33b0210406b5758d64}
+      \strng{authorbibnamehash}{b372d6d16ca15a33b0210406b5758d64}
+      \strng{authornamehash}{9097194d46cc4b9d84671e3ae7d18c44}
+      \strng{authorfullhash}{b372d6d16ca15a33b0210406b5758d64}
+      \strng{authorfullhashraw}{b372d6d16ca15a33b0210406b5758d64}
+      \field{sortinit}{M}
+      \field{sortinithash}{4625c616857f13d17ce56f7d4f97d451}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{journaltitle}{Biological cybernetics}
+      \field{number}{3}
+      \field{title}{Inverse perspective mapping simplifies optical flow computation and obstacle detection}
+      \field{volume}{64}
+      \field{year}{1991}
+      \field{pages}{177\bibrangedash 185}
+      \range{pages}{9}
+    \endentry
     \entry{mandeljc2013tracking}{article}{}{}
       \name{author}{4}{}{%
         {{hash=3f844681cbfd515c847f510e02d25556}{%
@@ -2035,6 +2119,28 @@
       \field{note}{OpenCV Developer Manual}
       \field{title}{BackgroundSubtractorKNN Class Reference}
       \field{year}{2025}
+    \endentry
+    \entry{opencv_changelog}{misc}{}{}
+      \name{author}{1}{}{%
+        {{hash=5bd3dfdc302c8d0660444d98cf3baa60}{%
+           family={{OpenCV Team}},
+           familyi={O\bibinitperiod}}}%
+      }
+      \strng{namehash}{5bd3dfdc302c8d0660444d98cf3baa60}
+      \strng{fullhash}{5bd3dfdc302c8d0660444d98cf3baa60}
+      \strng{fullhashraw}{5bd3dfdc302c8d0660444d98cf3baa60}
+      \strng{bibnamehash}{5bd3dfdc302c8d0660444d98cf3baa60}
+      \strng{authorbibnamehash}{5bd3dfdc302c8d0660444d98cf3baa60}
+      \strng{authornamehash}{5bd3dfdc302c8d0660444d98cf3baa60}
+      \strng{authorfullhash}{5bd3dfdc302c8d0660444d98cf3baa60}
+      \strng{authorfullhashraw}{5bd3dfdc302c8d0660444d98cf3baa60}
+      \field{sortinit}{O}
+      \field{sortinithash}{2cd7140a07aea5341f9e2771efe90aae}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{note}{Dostępne online: https://github.com/opencv/opencv/wiki/ChangeLog}
+      \field{title}{OpenCV ChangeLog: Optimizations and Universal Intrinsics}
+      \field{year}{2020}
     \endentry
     \entry{philion2020}{misc}{}{}
       \name{author}{2}{}{%
@@ -2283,6 +2389,65 @@
       \field{journaltitle}{arXiv preprint arXiv:1609.01775}
       \field{title}{Performance Measures and a Data Set for Multi-Target, Multi-Camera Tracking}
       \field{year}{2016}
+    \endentry
+    \entry{ryspekov2026}{article}{}{}
+      \name{author}{1}{}{%
+        {{hash=9bd509df200bd9f6dfcaf763210b09f1}{%
+           family={Ryspekov},
+           familyi={R\bibinitperiod},
+           given={Bekzhan},
+           giveni={B\bibinitperiod}}}%
+      }
+      \strng{namehash}{9bd509df200bd9f6dfcaf763210b09f1}
+      \strng{fullhash}{9bd509df200bd9f6dfcaf763210b09f1}
+      \strng{fullhashraw}{9bd509df200bd9f6dfcaf763210b09f1}
+      \strng{bibnamehash}{9bd509df200bd9f6dfcaf763210b09f1}
+      \strng{authorbibnamehash}{9bd509df200bd9f6dfcaf763210b09f1}
+      \strng{authornamehash}{9bd509df200bd9f6dfcaf763210b09f1}
+      \strng{authorfullhash}{9bd509df200bd9f6dfcaf763210b09f1}
+      \strng{authorfullhashraw}{9bd509df200bd9f6dfcaf763210b09f1}
+      \field{sortinit}{R}
+      \field{sortinithash}{5e1c39a9d46ffb6bebd8f801023a9486}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{journaltitle}{NHSJS Reports: Computing, Data \& AI}
+      \field{month}{4}
+      \field{title}{Performance Analysis of Modern Object Detection Models for Edge-Based Assistive Glasses}
+      \field{year}{2026}
+    \endentry
+    \entry{singh2025}{article}{}{}
+      \name{author}{3}{}{%
+        {{hash=64bf944cf90dcb2d8920024a3f5de88e}{%
+           family={Singh},
+           familyi={S\bibinitperiod},
+           given={Prithvi\bibnamedelima Raj},
+           giveni={P\bibinitperiod\bibinitdelim R\bibinitperiod}}}%
+        {{hash=8622ea81ad2c52f84caeb45d0b020e97}{%
+           family={Gottumukkala},
+           familyi={G\bibinitperiod},
+           given={Raju},
+           giveni={R\bibinitperiod}}}%
+        {{hash=7fb7d9e04d3d66f10b2c3270f0be4087}{%
+           family={Maida},
+           familyi={M\bibinitperiod},
+           given={Anthony},
+           giveni={A\bibinitperiod}}}%
+      }
+      \strng{namehash}{b8c67a12d601b881580ef702d3b68880}
+      \strng{fullhash}{d5e11c35281a69bbd65ead1629a75a71}
+      \strng{fullhashraw}{d5e11c35281a69bbd65ead1629a75a71}
+      \strng{bibnamehash}{d5e11c35281a69bbd65ead1629a75a71}
+      \strng{authorbibnamehash}{d5e11c35281a69bbd65ead1629a75a71}
+      \strng{authornamehash}{b8c67a12d601b881580ef702d3b68880}
+      \strng{authorfullhash}{d5e11c35281a69bbd65ead1629a75a71}
+      \strng{authorfullhashraw}{d5e11c35281a69bbd65ead1629a75a71}
+      \field{sortinit}{S}
+      \field{sortinithash}{b164b07b29984b41daf1e85279fbc5ab}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{journaltitle}{arXiv preprint arXiv:2509.18451v1}
+      \field{title}{An Analysis of Kalman Filter based Object Tracking Methods for Fast-Moving Tiny Objects}
+      \field{year}{2025}
     \endentry
     \entry{solovyova2026}{article}{}{}
       \name{author}{1}{}{%

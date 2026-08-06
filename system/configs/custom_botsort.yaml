@@ -1,0 +1,16 @@
+#primary tracking parameters
+tracker_type: botsort
+track_high_thresh: 0.25
+track_low_thresh: 0.1
+new_track_thresh: 0.3
+track_buffer: 60
+match_thresh: 0.8
+#bot-sort specific parameters
+gmc_method: sparseOptFlow
+proximity_thresh: 0.5
+appearance_thresh: 0.25
+#parameteres for reid
+with_reid: True
+model: auto
+
+fuse_score: True

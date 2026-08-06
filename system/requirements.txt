@@ -1,8 +1,0 @@
-ultralytics==8.2.0    
-transformers>=4.38.0  
-huggingface-hub
-opencv-python
-numpy
-supervision           
-scipy                 
-lapx                  

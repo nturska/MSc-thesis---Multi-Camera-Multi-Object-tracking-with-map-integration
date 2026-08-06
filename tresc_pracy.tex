@@ -1318,7 +1318,7 @@ operacje są w~pełni wspierane sprzętowo przez GPU/Neural Engine. Jak zostanie
 w~dalszej części pracy, uwarunkowanie to bezpośrednio zdeterminowało odrzucenie najnowszych
 iteracji modeli YOLO w~niniejszej pracy.
 
-\subsection{Wybrane środowisko programistyczne: Język Python i~środowisko Miniforge}
+\subsection{Środowisko programistyczne: Język Python oraz Miniforge}
 
 Jako główną warstwę aplikacyjną systemu MTMC wybrano język Python, funkcjonujący w wirtualnym
 środowisku Miniforge, będącym dystrybucją pakietów Conda dla architektury
@@ -1340,27 +1340,679 @@ zunifikowanej pamięci UMA, SciPy - do rozwiązywania problemów asocjacyjnych n
 dwudzielnych, oraz wbudowany moduł \texttt{multiprocessing}, wykorzystywany do izolowania procesów
 dekodowania strumieni H.264 z~poszczególnych kamer.
 
-\subsubsection{Technologie odrzucone}
+\subsubsection{Alternatywne środowiska programistyczne}
 
-Podczas projektowania systemu opartego na układach z~rodziny Apple Silicon, świadomie zrezygnowano
+Przez wzgląd na fakt, że system będzie działał na układach z~rodziny Apple Silicon, zrezygnowano
 z~wykorzystania języka C++ jako głównego środowiska programistycznego. W~docelowych systemach
 wbudowanych dla monitoringu wizyjnego C++ gwarantuje najwyższą kontrolę i~przewidywalność
 zarządzania stertą (\textit{ang. heap}) oraz pamięcią podręczną, jednak na platformie macOS
 wymuszałoby to implementację procesów wnioskowania poprzez niskopoziomowe interfejsy lub adaptację
 lekkich silników brzegowych. Co więcej, implementacja najnowszych architektur opartych na
 transformatorach -- które stanowią obecnie fundament nowoczesnych modułów reidentyfikacji
-obiektów~\cite{he2021transreid} -- w~języku C++ i frameworku Metal wydłużyłaby czas programowania
-o~rzędy wielkości. Nie przyniosłoby to przy tym współmiernych zysków dla całkowitej wydajności
+obiektów~\cite{he2021transreid} -- w~języku C++ i frameworku Metal znacznie wydłużyłaby czas
+programowania, nie przynosząc przy tym współmiernych zysków dla całkowitej wydajności
 systemu~\cite{feng2025}.
 
 Z~analogicznych przyczyn, podyktowanych przede wszystkim brakiem nowoczesnych, oficjalnie
 wspieranych przez społeczność dowiązań (\textit{ang. bindings}) do interfejsu MPS, odrzucono
 również środowiska Java oraz MATLAB. Ponadto, jak uzasadniono we wcześniejszych podrozdziałach,
-definitywnie porzucono architekturę NVIDIA CUDA oraz TensorRT ze względu na ich fizyczną i
-programową niekompatybilność z~układem SoC M5~\cite{aliyev2025}.
+odrzucono architekturę NVIDIA CUDA oraz TensorRT ze względu na ich niekompatybilność z~układem SoC
+M5~\cite{aliyev2025}.
+
+\section{Śledzenie wewnątrz pojedynczej kamery i detekcja obiektów}
+
+\subsection{Ekosystem YOLO oraz modele RT-DETR}
+
+Do zadania lokalizacji obiektów w czasie niemal rzeczywistym wykorzystano jednoetapowe detektory
+(\textit{ang. one-stage detectors}) zaimplementowane w bibliotece Ultralytics. Skupiono się przede
+wszystkim na architekturze YOLOv8 oraz modelach opartych na transformatorach wizyjnych z rodziny
+RT-DETR \textit{(ang. Real-Time Detection Transformer)}. Detektory jednoetapowe rozwiązują zadanie
+detekcji poprzez bezpośrednią regresję współrzędnych ramek i klasyfikacji w jednym przebiegu sieci
+(\textit{ang. forward pass}), co zapewnia im znaczną przewagę wydajnościową nad klasycznymi
+podejściami opartymi na generowaniu regionów.
+
+Z perspektywy wdrożenia systemu na układach Apple Silicon M5, kluczowym atutem biblioteki
+Ultralytics jest pełna integracja akceleracji sprzętowej poprzez bezpośredni dostęp do interfejsu
+Metal Performance Shaders (parametr \texttt{device='mps'}). Ważnym aspektem był jednak dobór
+odpowiedniej generacji algorytmu. Mimo dostępności w literaturze nowszych wersji takich jak YOLOv10
+lub YOLOv11, ostatecznie zdecydowano się na wykorzystanie YOLOv8, w wariantach Nano oraz Medium,
+oraz modelu RT-DETR-L.
+
+Decyzja ta wynika z dogłębnej analizy zachowania grafów obliczeniowych tych modeli na backendzie
+MPS~\cite{ryspekov2026}. Architektura YOLOv8 opiera się na podejściu bezkotwicowym (\textit{ang.
+  anchor-free}), rozdzielonej głowie detekcyjnej (\textit{ang. split head}) oraz regresji
+dystrybucyjnej DFL (\textit{ang. Distribution Focal Loss}). Jej operacje splotowe wykazują pełną
+zgodność z szablonami zoptymalizowanych warstw w Apple Metal. Z kolei nowsze architektury
+wykorzystują eksperymentalne operacje atencji, których brak w bibliotece MPS skutkuje tzw. cichym
+przeniesieniem obliczeń na powolny procesor główny (CPU)~\cite{ryspekov2026}. Dzięki optymalnej
+kompatybilności, model YOLOv8-Nano uruchomiony na układach z serii Apple M wykazuje w testach
+średnie opóźnienie rzędu 210~ms (ok. 4,75 FPS), przy jednoczesnym bardzo stabilnym odchyleniu
+standardowym na poziomie 123~ms~\cite{ryspekov2026}.
+
+Z kolei dla scen charakteryzujących się bardzo wysokim zagęszczeniem pieszych i długotrwałymi
+okluzjami, klasyczne filtry bazujące na redukcji nadmiarowych ramek wykazują tendencję do błędnego
+odrzucania pokrywających się sylwetek~\cite{ryspekov2026}. W takich sytuacjach system hybrydowo
+integruje model RT-DETR-L. Formułuje on problem detekcji jako bezpośrednią predykcję zbioru
+obiektów (\textit{ang. direct set prediction}), wykorzystując hybrydowy enkoder i algorytm
+optymalnego skojarzenia w grafie dwudzielnym. Eliminacja heurystycznego algorytmu NMS zwalnia
+znaczne zasoby procesora CPU~\cite{ryspekov2026}. Co więcej, dzięki optymalizacji operacji
+macierzowych, model ten osiąga wysoką precyzję rzędu 54,71\% (mAP@0.5:0.95) przy stabilnym
+opóźnieniu 331~ms~\cite{ryspekov2026}. Wybór ten stanowi więc kompromis pomiędzy precyzją niezbędną
+do minimalizacji fragmentacji trajektorii, a opóźnieniem wymaganym w systemach bezpieczeństwa.
+
+\subsection{Ograniczenia nowszych architektur YOLO w środowisku Apple MPS}
+
+Choć w~środowiskach opartych na akceleratorach NVIDIA, modele YOLO v10 i v11 wykazują wyższą
+precyzję przy mniejszej liczbie teoretycznych operacji zmiennoprzecinkowych, badania empiryczne
+dowodzą, że wskaźniki te nie przekładają się na niskie opóźnienia na urządzeniach brzegowych
+(\textit{ang. edge devices}), takich jak układy Apple Silicon~\cite{ryspekov2026}. Nowe generacje
+YOLO, w~szczególności wersja v10, wprowadzają specyficzne moduły atencji (\textit{ang. Partial
+  Self-Attention} -- PSA). Ponieważ framework Metal Performance Shaders wciąż posiada ograniczony
+zakres wspieranych operatorów w~porównaniu ze środowiskiem CUDA, kompilator grafu obliczeniowego
+nie jest w~stanie optymalnie zinterpretować bloków PSA~\cite{ryspekov2026}.
+
+Z~powodu braku odpowiedniego wzorca sprzętowego, środowisko PyTorch wykonuje tzw. ciche
+przeniesienie obliczeń (\textit{ang. silent CPU fallback}) z~wydajnych jednostek graficznych
+z~powrotem na powolniejsze wątki procesora centralnego (CPU)~\cite{ryspekov2026, aliyev2025}.
+
+Z~analogicznych względów wydajnościowych całkowicie zrezygnowano z~detektorów dwuetapowych, takich
+jak architektura Faster R-CNN~\cite{ren2015faster}. Opierają się one na procesie generowania
+propozycji regionów (RPN), którego iteracyjne przetwarzanie wyczerpałoby dopuszczalny budżet
+opóźnień (\textit{ang. latency budget}) całego systemu. Z~kolei klasyczne podejścia z~dziedziny
+wizji komputerowej (np. deskryptory HOG + SVM czy kaskady Viola-Jones) zostały odrzucone z~powodu
+ich niskiej odporności na zniekształcenia perspektywiczne oraz braku zdolności adaptacyjnych do
+luki domenowej (\textit{ang. domain gap}).
+
+\subsection{Asocjacja danych i metody filtracji trajektorii: BoT-SORT i ByteTrack}
+
+Najważniejszym kryterium doboru algorytmu asocjacji w pojedynczej kamerze był kompromis pomiędzy
+odpornością na zjawisko okluzji a opóźnieniami w potoku przetwarzania. Choć klasyczny algorytm
+SORT~\cite{bewley2016} cechuje się wydajnością rzędu 260~Hz, przez podatność na utratę tożsamości
+obiektów w gęstych scenach nie mógł być zastosowany w systemie monitoringu \cite{bewley2016}.
+Wprowadzenie do procesu asocjacji cech wizualnych w architekturze Deep~SORT~\cite{wojke2017}
+pozwoliło wprawdzie na redukcję liczby błędów zmiany tożsamości (\textit{ang. ID switches}) o 45\%,
+jednak na współczesnych, zatłoczonych zbiorach danych model ten ustępuje precyzją nowszym
+rozwiązaniom \cite{wojke2017}.
+
+Szczegółowej analizie porównawczej poddano architekturę ByteTrack~\cite{zhang2022} oraz jej
+udoskonalone rozwinięcie -- BoT-SORT~\cite{aharon2022}. Średni czas wnioskowania ByteTrack wynosi
+26,6~ms, jednak dla nietypowych warunków model ten traci precyzję lokalizacji
+przestrzennej\cite{singh2025}. Jak dowodzą najnowsze badania ewaluacyjne, dla obiektów szybko
+poruszających się lub często zasłanianych, błędy śledzenia ByteTracka - wyrażone w średnim
+przesunięciu względem celu - potrafią być o 260\% wyższe niż w konkurencyjnych metodach, osiągając
+średnie odchylenie ADE na poziomie 114,3 piksela~\cite{singh2025}.
+
+Z tego powodu ostatecznie zdecydowano się na wdrożenie algorytmu BoT-SORT~\cite{aharon2022}.
+Rozwiązuje on problem wysokiego błędu przestrzennego i wykazuje znacznie wyższą stabilność
+trajektorii przy wciąż akceptowalnym opóźnieniu. W testach na zbiorze MOT17, BoT-SORT osiągnął
+najlepsze wyniki skuteczności (MOTA na poziomie 80,6 oraz IDF1 na poziomie 79,5), wyprzedzając tym
+samym swojego poprzednika~\cite{aharon2022}.
+
+Docelowa integracja niskowariancyjnych predykcji detektora YOLOv8 z asocjatorem BoT-SORT, który z
+powodzeniem łączy w jednym kroku koszty geometryczne (IoU) i wizualne (Re-ID), gwarantuje rzetelną
+bazę do utrzymania ciągłości trajektorii. Stanowi to warunek konieczny dla niezawodnego działania
+globalnego modułu kojarzenia obiektów pomiędzy wieloma kamerami.
+
+\section{Reidentyfikacja obiektów (Re-ID)}
+
+\subsection{Vision Transformers i TransReID}
+
+Ze względu na relatywnie niską rozdzielczość w systemach CCTV, która uniemożliwia identyfikację
+biometryczną (np. na podstawie cech twarzy), rozpoznawanie obiektów musi opierać się wyłącznie na
+elementach ubioru, geometrii oraz cechach szczególnych. Do implementacji modułu wybrano ekosystem
+biblioteki \texttt{transformers} firmy Hugging Face, która posiada spójny interfejs API do
+eksperymentów badawczych i jest kompatybilna z akceleratorami Apple Silicon. Transformacja modeli
+odbywa się w kodzie w czasie rzeczywistym poprzez bezpośrednie lokowanie wag w architekturze Metal
+(metoda \texttt{.to("mps")}).
+
+Jako architekturę docelową wybrano rozwiązanie inspirowane modelem
+TransReID~\cite{he2021transreid}, oparte o czyste transformatory wizyjne - ViT. Dzięki mechanizmowi
+samoatencji (\textit{ang. self-attention}), architektury te wyodrębniają zależności przestrzenne
+dalekiego zasięgu bezpośrednio z sekwencji wycinków obrazu (\textit{ang. patches}), zachowując przy
+tym pełną rozdzielczość niezbędną do odróżniania wizualnie podobnych
+obiektów~\cite{he2021transreid}. Zrezygnowano z implementacji klasycznych architektur opartych na
+konwolucyjnych sieciach neuronowych (CNN), takich jak ResNet-50 ze schematem IDE czy popularny
+model PCB~\cite{sun2018beyond}. Zasadniczą wadą sieci CNN w zadaniach Re-ID jest bezpowrotna utrata
+drobnych, ale istotnych szczegółów sylwetki - logotypów na odzieży, krawędzi plecaków - wynikająca
+z postępującej redukcji rozdzielczości w operacjach łączenia (\textit{ang. downsampling/pooling}).
+
+\subsection{Wybór metod adaptacji domenowej i optymalizacji przestrzeni cech}
+
+Wyzwaniem w monitoringu wielokamerowym pozostaje tzw. luka domenowa (\textit{ang. domain gap}),
+objawiająca się drastycznymi różnicami w przestrzeni barw oraz perspektywie pomiędzy różnymi
+punktami obserwacyjnymi. Aby zneutralizować ten problem i uodpornić system na zmienne warunki
+środowiskowe, zdecydowano się na zastosowanie dwóch komplementarnych technologii.
+
+Pierwszym zidentyfikowanym problemem były zniekształcenia geometryczne i perspektywiczne sylwetek.
+Do ich korekty wybrano mechanizm bocznych osadzeń informacyjnych (\textit{ang. Side Information
+  Embeddings - SIE})~\cite{he2021transreid}. Przez wzgląd na jego zdolność do bezpośredniego
+przekazywania identyfikatorów poszczególnych kamer do wektora reprezentacji modelu. W
+przeciwieństwie do klasycznych rozwiązań, SIE pozwala na jawną kompensację różnic wizualnych
+wynikających z unikalnego umiejscowienia kamery, ułatwiając sieci rozpoznanie tego samego obiektu
+pod różnymi kątami~\cite{he2021transreid}.
+
+Drugim istotnym problemem projektowym był brak oznaczonych danych dla docelowego środowiska
+działania systemu, a ręczne etykietowanie nowych nagrań jest procesem wysoce nieefektywnym. W celu
+jego rozwiązania, proces optymalizacji oparto na architekturze nienadzorowanej adaptacji domenowej
+(UDA). Spośród dostępnych metod wytypowano schemat MMT (\textit{ang. Mutual
+  Mean-Teaching})~\cite{ge2020mutual}. MMT wykazuje odporność na zaszumione dane -- algorytm ten
+poprawia zdolności uogólniania modelu poprzez generowanie miękkich pseudoetykiet przy użyciu
+uśrednionych wag nauczyciela, skutecznie transferując wiedzę z domeny źródłowej do docelowej bez
+jakiegokolwiek nadzoru eksperta~\cite{ge2020mutual}.
+
+Do optymalizacji przestrzeni wyekstrahowanych cech na układzie Apple M5 wybrano funkcję straty
+trójkowej z trudną eksploracją (\textit{ang. Batch-Hard Triplet Loss})~\cite{hermans2017defense}. W
+przeciwieństwie do standardowych miar klasyfikacyjnych lub naiwnego doboru trójek, które prowadzą
+do szybkiej stagnacji uczenia, metoda ta wymusza na sieci minimalizowanie odległości euklidesowej
+$D$ wyłącznie dla najtrudniejszych przypadków pozytywnych i negatywnych w danej paczce:
+\begin{equation}
+  \mathcal{L}_{BH} = \sum_{i=1}^{P} \sum_{a=1}^{K} \left[ m + \overbrace{\max_{p=1 \dots K} D\left(f_\theta(x_i^{(a)}), f_\theta(x_i^{(p)})\right)}^{\text{najtrudniejszy pozytyw}} - \overbrace{\min_{\substack{j=1 \dots P \\ n=1 \dots K \\ j \neq i}} D\left(f_\theta(x_i^{(a)}), f_\theta(x_j^{(n)})\right)}^{\text{najtrudniejszy negatyw}} \right]_+
+  \label{eq:batch_hard_triplet}
+\end{equation}
+gdzie $P$ oznacza liczbę unikalnych osób w paczce, $K$ liczbę obrazów danej osoby, a $m$ to założony margines separacji. Zastosowanie tej funkcji gwarantuje wyuczenie się wysoce dyskryminatywnych deskryptorów wizualnych, co bezpośrednio przekłada się na wyższą skuteczność kojarzenia trajektorii w globalnym module asocjacji~\cite{hermans2017defense}.
+
+Ostatecznie, wdrożenie tak zaawansowanych mechanizmów musiało zostać dostosowane do specyfiki
+sprzętowej procesora Apple M5. Ponieważ natywny backend MPS (\textit{Metal Performance Shaders})
+posiada przejściowe braki w implementacji niektórych niskopoziomowych operatorów macierzowych,
+architekturę uzupełniono o jawną deklarację zmiennej środowiskowej
+\texttt{os.environ["PYTORCH\_ENABLE\_MPS\_FALLBACK"] = "1"}. Decyzja ta była niezbędna do
+zabezpieczenia procesu ekstrakcji cech przed krytycznymi przerwaniami -- mechanizm ten wymusza
+automatyczne i bezpieczne przeniesienie wykonania nieobsługiwanych fragmentów grafu obliczeniowego
+na procesor centralny (CPU), gwarantując nieprzerwaną pracę całego systemu.
+
+\subsection{Technologie odrzucone w zadaniu reidentyfikacji}
+
+Podczas projektowania modułu Re-ID świadomie odrzucono metody oparte na ręcznie projektowanych
+cechach wizualnych (\textit{ang. hand-crafted features}), w~tym zaawansowane deskryptory takie jak
+LOMO (oparte na transformatach Retinex i~agregacji maksymalnych wystąpień w~przesuwnych
+oknach)~\cite{liao2015} oraz moduły symetryczne SDALF~\cite{bazzani2013}. Choć charakteryzują się
+one znacznie niższym narzutem obliczeniowym niż architektura TransReID, ich skuteczność drastycznie
+spada w~przypadku zaszumionych nagrań o~niskiej rozdzielczości oraz przy znacznych zmianach
+perspektywy (\textit{ang. viewpoint changes}) występujących pomiędzy różnymi kamerami. Zrezygnowano
+również z~integracji klasycznych architektur syjamskich, trenowanych z~wykorzystaniem funkcji
+straty kontrastowej w~starszych frameworkach (takich jak Caffe czy Theano). Stanowią one obecnie
+przestarzałe rozwiązania, pozbawione możliwości płynnej adaptacji ich środowisk uruchomieniowych do
+architektury zunifikowanej pamięci układów Apple M5.
+
+Ostatecznie nie zdecydowano się także na wdrożenie metod realizujących założenia \textit{Privacy by
+  Design}, czyli systemów bazujących na topologii szkieletowej (np. modele grafowe
+TranSG~\cite{rao2023}) lub analizie dynamiki chodu (np. algorytm GaitSet~\cite{chao2019gaitset}).
+Pomimo ich niewątpliwych zalet w~kontekście anonimizacji wizerunku, odrzucenie to podyktowane było
+nieproporcjonalnie wysokim kosztem obliczeniowym niezbędnym do ekstrakcji punktów kluczowych
+sylwetki. Wymagałoby to uruchomienia ciężkich estymatorów pozy (np. OpenPose) całkowicie
+współbieżnie z~istniejącymi już detektorami obiektów, co natychmiast wyczerpałoby dostępny budżet
+opóźnień całego systemu.
+
+\section{Geometria sceny, rzutowanie BEV i modelowanie tła poprzez bibliotekę OpenCV}
+
+\subsection{OpenCV z optymalizacjami dla architektury ARM}
+
+Do realizacji podstawowych operacji na obrazach, dekodowania macierzy perspektywy oraz wstępnego
+przetwarzania surowych strumieni wideo, wybrano powszechnie stosowaną bibliotekę OpenCV
+(\textit{ang. Open Source Computer Vision}) w postaci interfejsu programistycznego dla języka
+Python. Istotnym atutem tego rozwiązania w kontekście wdrożenia na układzie SoC Apple M5 jest
+natywna optymalizacja jej bazowego kodu C++ pod procesory z rodziny ARM~\cite{opencv_changelog}.
+
+Kluczowe algorytmy matematyczne OpenCV korzystają ze sprzętowych instrukcji wektorowych ARM NEON.
+Odbywa się to poprzez tzw. uniwersalne instrukcje wewnętrzne (\textit{ang. universal intrinsics}),
+deklarowane m.in. w nagłówku \texttt{arm\_neon.h}, które potrafią wektoryzować operacje w
+środowisku zredukowanych rozkazów RISC na 128-bitowych rejestrach~\cite{opencv_changelog}. Pozwala
+to na znaczną redukcję czasu wykonywania operacji zmiennoprzecinkowych (FP16) oraz
+całkowitoliczbowych (SIMD) podczas analizy każdej z milionów klatek rejestrowanego wideo.
+Dodatkowo, w środowisku macOS struktura OpenCV integruje się z niskopoziomowym pakietem Apple
+Accelerate Framework. Jest to zbiór zoptymalizowanych procedur dostarczających funkcje numeryczne,
+operacje algebry liniowej oraz biblioteki przetwarzania sygnałów. Przekłada się to na wysoką
+wydajność podstawowych przekształceń, takich jak konwersje przestrzeni barw, rzutowania
+perspektywiczne czy zmiany rozdzielczości, co skutecznie odciąża procesor główny, rezerwując pule
+cykli obliczeniowych dla złożonych asocjacji logicznych w procesie śledzenia.
+
+W celu skutecznego rzutowania detekcji pomiędzy wieloma kamerami, zwłaszcza w scenach o dużym
+zagęszczeniu i silnych okluzjach, niezbędna jest transformacja geometrii wideo. W systemie
+wykorzystano w tym celu Probabilistyczne Mapy Zajętości (POM, \textit{ang. Probabilistic Occupancy
+  Map}), zaproponowane pierwotnie przez Fleureta i in.~\cite{fleuret2008}. Algorytm ten szacuje
+prawdopodobieństwo zajętości danej komórki siatki na płaszczyźnie gruntu (reprezentowane zmienną
+$X_k \in \{0,1\}$) przez pieszego. Estymacja ta opiera się bezpośrednio na maskach izolowanego tła
+we wszystkich dostępnych kamerach~\cite{fleuret2008}. POM minimalizuje błędy rzutowania przy użyciu
+probabilistycznego przybliżenia wariacyjnego, redukując odległość Kullbacka-Leiblera pomiędzy
+estymowanym a rzeczywistym rozkładem prawdopodobieństwa obecności obiektów.
+
+Zestawienie syntetycznego obrazu $A^c$, powstałego jako suma logiczna rzutowanych sylwetek ($A^c =
+  \bigoplus_k X_k A^c_k$), z faktycznym obrazem masek tła $B$, pozwala na obliczenie kary (tzw.
+pseudoodległości) za wszelkie niezgodności z obrazem rzeczywistym~\cite{fleuret2008}:
+\begin{equation}
+  \Psi(B,A) = \frac{1}{\sigma} \frac{\big|B \otimes (1 - A) + (1 - B) \otimes A\big|}{|A|}
+\end{equation}
+W powyższym równaniu operatory $\otimes$ oraz dodawania realizują operację różnicy symetrycznej (pomiędzy fałszywymi detekcjami a brakiem pokrycia), która następnie jest normalizowana przez powierzchnię $|A|$ i skalowana parametrem ufności $\sigma$.
+
+Powyższy mechanizm, zwiększając odporność systemu na zjawisko wzajemnego przesłaniania się obiektów
+wzdłuż osi optycznej kamery, skutecznie koryguje fizyczne współrzędne predykcji. Jako dane
+wejściowe (zbiór $B$) do algorytmu POM podawane są maski pierwszoplanowe, uzyskane przy pomocy
+technik wyodrębniania tła (\textit{ang. Background Subtraction} -- BGS) natywnie zaimplementowanych
+w bibliotece OpenCV. W potoku przetwarzania wykorzystane zostały dwa podejścia. Pierwszym jest
+wariant estymacji nieparametrycznej KNN, bazujący na estymatorze balonowym, który ogranicza
+złożoność obliczeniową poprzez adaptację rozmiaru jądra do lokalnej gęstości
+danych~\cite{zivkovic2006}. Drugim jest ulepszony algorytm mieszanin gaussowskich
+MOG2~\cite{zivkovic2004}.
+
+Zastosowanie algorytmu MOG2 skutecznie zwalnia system na sprzęcie brzegowym z wysokiego obciążenia
+pamięciowego (\textit{ang. memory footprint}). Model ten przypisuje każdemu pikselowi obrazu
+mieszaninę rozkładów normalnych z automatycznym kryterium optymalizacji ich liczby. Ostateczne wagi
+w procesie mapowania MOG2 są aktualizowane z wykorzystaniem ujemnego współczynnika rozkładu a
+priori Dirichleta:
+\begin{equation}
+  \hat{\pi}_m \leftarrow \hat{\pi}_m + \alpha (o_m^{(t)} - \hat{\pi}_m) - \alpha c_T
+\end{equation}
+Równanie to gwarantuje szybkie usunięcie przestarzałych klastrów tła (zjawisko tzw. eliminacji komponentów), które przestają otrzymywać wzmocnienie informacyjne, pozwalając modelowi na płynną adaptację do zmian w scenie~\cite{zivkovic2004}.
+
+Całość operacji geometrycznych bazuje następnie na modelach kalibracyjnych i estymacji macierzy
+homografii $3 \times 3$, które transformują punkty z obrazu perspektywicznego na płaszczyznę gruntu
+za pomocą klasycznej metody odwrotnego mapowania perspektywicznego (IPM, \textit{ang. Inverse
+  Perspective Mapping})~\cite{mallot1991}:
+\begin{equation}
+  \lambda \begin{bmatrix} x' \\ y' \\ 1 \end{bmatrix} = \mathbf{H} \begin{bmatrix} x \\ y \\ 1 \end{bmatrix}
+\end{equation}
+W środowisku OpenCV transformacja \texttt{cv::warpPerspective} jest bezpośrednio i natywnie wektoryzowana na sprzętowe jednostki SIMD (ARM NEON) w układzie M5, co pozwala na jej wykonanie w ułamku sekundy~\cite{opencv_changelog}.
+
+Z rozważań projektowych definitywnie wykluczono współczesne algorytmy transformacji do przestrzeni
+BEV oparte na głębokich sieciach neuronowych trenowanych w rygorze \textit{end-to-end} -- takie jak
+modele Lift, Splat, Shoot (LSS)~\cite{philion2020} czy architektury bazujące na transformatorach
+atencyjnych (np. BEVFormer~\cite{li2022bevformer}). Mimo że w domenie pojazdów autonomicznych
+technologie te z powodzeniem wypierają modele analityczne (ignorując problem braku idealnej
+płaskości terenu), ich wysokie wymagania obliczeniowe oraz zapotrzebowanie na ogromne zbiory danych
+uczących czynią je niepraktycznymi w statycznym monitoringu wizyjnym (CCTV). Wymagałyby one
+ciągłego ewaluowania wielkich, trójwymiarowych grafów wyłącznie po to, by wygenerować rzuty dla
+sztywno zamontowanych kamer. Z tak sformułowanym problemem algorytmy analityczne OpenCV radzą sobie
+natychmiastowo, korzystając ze stałych macierzy kalibracji. Odrzucono również starsze algorytmy
+wyodrębniania tła, takie jak Bayesowski GMG, gdyż wymagają one długiej fazy inicjalizacyjnej
+opóźniającej wejście systemu w tryb gotowości operacyjnej i wykazują niższą stabilność w
+środowiskach wbudowanych~\cite{opencv_changelog}.
 
 \chapter{Implementacja systemu śledzenia i reidentyfikacji}\label{chap:implementacja}
+
+\section{Architektura potoku przetwarzania danych}
+
+Wdrożone rozwiązanie analizy nagrań z systemu wielokamerowego opiera się na kaskadowym potoku
+przetwarzania danych (\textit{ang. pipeline}). Informacje wizualne są analizowane wieloetapowo: od
+lokalizacji przestrzennej, poprzez śledzenie wewnątrz pojedynczej kamery, aż po globalną asocjację
+tożsamości. Złożoność obliczeniowa równoległego przetwarzania kilku strumieni wideo w wysokiej
+rozdzielczości wymusiła zastosowanie architektury współbieżnej. System nie analizuje sekwencyjnie
+każdej kamery po kolei, lecz dystrybuuje zadania na niezależne podprocesy.
+
+\subsection{Środowisko uruchomieniowe i optymalizacja dla układu Apple M5}
+
+Kluczowym uwarunkowaniem wdrożeniowym prezentowanego systemu była specyfika platformy sprzętowej –
+procesora z rodziny Apple Silicon M5. Układy te wykorzystują zunifikowaną architekturę pamięci
+(\textit{ang. Unified Memory Architecture} -- UMA). Oznacza to, że procesor główny oraz
+wielordzeniowy koprocesor graficzny współdzielą wspólną przestrzeń pamięci operacyjnej. Pozwala to
+na całkowite wyeliminowanie narzutu czasowego związanego z tradycyjnym kopiowaniem zdekodowanych
+klatek wideo z pamięci RAM do pamięci VRAM na magistrali PCIe.
+
+Aby wykorzystać potencjał obliczeniowy wbudowanych akceleratorów macierzowych, główny framework
+głębokiego uczenia -- PyTorch został zintegrowany z interfejsem MPS. Alokacja modeli neuronowych w
+pamięci koprocesora odbywa się poprzez jawną deklarację urządzenia sprzętowego: \texttt{device =
+  torch.device("mps")}. Ponieważ interfejs API Metal znajduje się w fazie intensywnego rozwoju i nie
+posiada natywnych implementacji dla wszystkich zaawansowanych operatorów wykorzystywanych w
+architekturach Transformer, wprowadzono zabezpieczenie na poziomie systemu operacyjnego. Poprzez
+deklarację zmiennej środowiskowej \texttt{os.environ["PYTORCH\_ENABLE\_MPS\_FALLBACK"] = "1"}
+wymuszono automatyczne przekierowanie nieobsługiwanych instrukcji na procesor główny, co gwarantuje
+bezawaryjną pracę potoku przetwarzania.
+
+\subsection{Wielowątkowość i asynchroniczna wymiana komunikatów}
+
+Zarządzanie strumieniami wideo z poszczególnych kamer zrealizowano przy użyciu wbudowanej
+biblioteki \texttt{multiprocessing}. Z uwagi na architekturę systemu macOS, do uruchamiania nowych
+procesów wykorzystano metodę \texttt{spawn}, co zapobiega konfliktom współdzielenia zasobów
+sprzętowych (GPU) podczas duplikowania grafów obliczeniowych.
+
+Każda kamera obsługiwana jest przez niezależny proces roboczy (\texttt{camera\_worker}). Proces ten
+samodzielnie dekoduje sygnał H.264, wykonuje detekcję oraz ekstrahuje cechy wizualne. Cechą
+wyróżniającą zaproponowanej architektury jest model komunikacji międzyprocesowej (IPC). Do głównego
+procesu asocjacji (Global Trackera) nie są przesyłane surowe klatki wideo, lecz wyłącznie
+ustrukturyzowane metadane w postaci słowników w języku Python. Pakiety te zawierają znormalizowane
+wektory cech Re-ID, wyliczone współrzędne na płaszczyźnie oraz identyfikator kamery. Takie
+podejście drastycznie redukuje obciążenie magistrali pamięciowej, umożliwiając łatwą skalowalność
+systemu poprzez dodawanie kolejnych sensorów wizyjnych.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=.8\textwidth]{architektura.png}
+  %\vspace*{-10mm}
+  \caption{Wizualizacja architektury potoku przetwarzania danych. Źródło: opracowanie własne.}
+  \label{fig:architektura}
+\end{figure}
+
+\section{Moduł detekcji i śledzenia w pojedynczej kamerze (SCT)}
+
+Realizacja śledzenia wieloobiektowego opiera się w systemie na dominującym paradygmacie śledzenia
+przez detekcję (\textit{ang. tracking-by-detection}). Zgodnie z tym podejściem problem rozdzielony
+jest na niezależną lokalizację przestrzenną obiektów oraz późniejsze łączenie ich w ciągłe
+trajektorie czasowe.
+
+\subsection{Inicjalizacja i wnioskowanie modelu YOLO}
+
+Jako fundament modułu lokalizacji przestrzennej wybrano model z rodziny YOLOv8 w wariancie
+\texttt{Medium} (YOLOv8m). Decyzja ta podyktowana była dogłębną analizą wydajnościową w środowisku
+Apple MPS. W odróżnieniu od nowszych architektur zawierających moduły atencji PSA, podstawowe bloki
+konwolucyjne modelu YOLOv8 są w pełni sprzętowo wspierane przez koprocesory M5, zapobiegając
+drastycznym skokom opóźnień (\textit{latency spikes}). Zastosowany wariant \texttt{Medium} oferuje
+korzystny kompromis pomiędzy czasem wnioskowania a precyzją wykrywania częściowo zasłoniętych
+sylwetek w zagęszczonych scenach miejskich.
+
+Dla optymalizacji obciążenia logiki decyzyjnej proces detekcji poddano rygorystycznej filtracji
+wejściowej. Próg ufności (\textit{confidence score}) sieci splotowej ustalono na poziomie $25\%$,
+odrzucając predykcje o niskim stopniu pewności. Następnie nałożono filtr semantyczny, redukując
+wyjściową przestrzeń wyników ze wszystkich $80$ klas zbioru COCO wyłącznie do klasy $0$,
+odpowiadającej detekcji pieszego. Wynikiem działania sieci jest wektor współrzędnych ramki
+otaczającej $b = [x_1, y_1, x_2, y_2]^T$, na podstawie którego wyznaczany jest centralny punkt
+dolnej krawędzi reprezentujący fizyczny styk obiektu z podłożem.
+
+\subsection{Śledzenie lokalne z wykorzystaniem algorytmu BoT-SORT}
+
+Aby odfiltrować błędne detekcje oraz zniwelować efekty krótkotrwałych okluzji (np. przejście
+pieszego za znakiem drogowym), wewnątrz każdego procesu kamery zaimplementowano lokalny algorytm
+asocjacji BoT-SORT. Model ten wprowadza istotne modyfikacje względem klasycznych rozwiązań,
+bezpośrednio modelując szerokość i wysokość ramki otaczającej w strukturze filtru Kalmana.
+
+Filtr Kalmana w każdej klatce estymuje przyszłe położenie obiektu na podstawie jego dotychczasowej
+prędkości wektorowej. BoT-SORT wykorzystuje algorytm kompensacji ruchu (CMC) do niwelowania
+ewentualnych drgań obrazu, a następnie wyznacza macierz kosztów asocjacji. Działając jako bufor
+wygładzający, śledzenie lokalne grupuje dyskretne detekcje pieszych w spójne fragmenty trajektorii
+(\textit{ang. tracklets}). Pozwala to na wysłanie do globalnego modułu wiarygodniejszej informacji
+o tożsamości, odciążając tym samym wyższe warstwy systemu.
+
+\begin{table}[htbp]
+  \centering
+  \caption{Parametry detektora i trackera lokalnego. Źródło: opracowanie własne.}
+  \label{tab:params_local_tracker}
+  \renewcommand{\arraystretch}{1.2}
+  \begin{tabular}{|l|c|p{8cm}|}
+    \hline
+    \textbf{Parametr}                         & \textbf{Wartość} & \textbf{Opis}                                                                                    \\ \hline
+    \textbf{Akceleracja sprzętowa}            & Apple MPS        & Wymuszenie wnioskowania na GPU procesora M5                                                      \\ \hline
+    \textbf{Model detekcji}                   & YOLOv8m          & Wersja o optymalnym stosunku wydajności do precyzji                                              \\ \hline
+    \textbf{Classes}                          & 0                & Ograniczenie detekcji do klasy pieszych                                                          \\ \hline
+    \textbf{Próg ufności - \texttt{conf}}     & 0.25             & Minimalne prawdopodobieństwo uznania ramki otaczającej za reprezentującą rzeczywisty obiekt.     \\ \hline
+    \textbf{Próg pokrycia - \texttt{iou}}     & 0.50             & Próg geometrycznego pokrycia ramek dla algorytmu asocjacji oraz redukcji duplikatów (NMS).       \\ \hline
+    \textbf{Tracker lokalny}                  & BoT-SORT         & Zintegrowany algorytm śledzenia generujący krótkie trajektorie wewnątrz pojedynczej kamery.      \\ \hline
+    \textbf{Wiek ścieżki - \texttt{max\_age}} & 30               & Maksymalna liczba klatek, przez które tracker podtrzymuje tożsamość ukrytego/zgubionego obiektu. \\ \hline
+
+  \end{tabular}
+\end{table}
+
+\section{Ekstrakcja cech wizualnych i reidentyfikacja (Re-ID)}
+
+Ograniczone pole widzenia pojedynczego sensora wymusza przekazanie odpowiedzialności za ciągłość
+trajektorii obiektów poruszających się między kamerami do dedykowanego modułu reidentyfikacji
+(Re-ID). Zadaniem tego etapu jest wyznaczenie unikalnej sygnatury wizualnej, odpornej na zmiany
+perspektywy i warunków oświetleniowych.
+
+\subsection{Implementacja architektury Vision Transformer (ViT)}
+
+Zrezygnowano z zastosowania klasycznych sieci splotowych (takich jak powszechnie stosowane warianty
+ResNet). Operacje zmniejszania rozdzielczości (\textit{pooling}) w głębokich warstwach sieci CNN
+prowadzą do bezpowrotnej utraty wysokoczęstotliwościowych detali, takich jak wzory odzieży czy
+krawędzie plecaków, co jest wysoce niepożądane przy identyfikacji osób o podobnym ogólnym zarysie
+sylwetki.
+
+W odpowiedzi na te ograniczenia zaimplementowano architekturę opartą na transformatorach wizyjnych
+(Vision Transformer - ViT), czerpiąc z rozwiązań zaproponowanych w modelu TransReID. Mechanizm
+samoatencji (\textit{self-attention}) dzieli wejściowy wycinek ramki pieszego na równe fragmenty
+(\textit{patches}), modelując zależności przestrzenne o dalekim zasięgu pomiędzy nimi na
+przestrzeni wszystkich warstw, co znacznie zwiększa odporność na częściowe zasłonięcia sylwetki.
+
+\subsection{Generowanie i normalizacja wektorów cech (Embeddings)}
+
+Wykorzystując biblioteki ekosystemu \texttt{Hugging Face}, wykadrowana sylwetka pieszego jest
+formatowana do wymagań wejściowych modelu (zmiana rozmiaru do $224 \times 224$ pikseli, konwersja
+przestrzeni barw z domyślnej dla OpenCV BGR na RGB). Proces wnioskowania (\textit{forward pass})
+realizowany jest w wysoce zoptymalizowanym kontekście \texttt{torch.no\_grad()}, co zapobiega
+alokacji pamięci na obliczanie gradientów.
+
+Rezultatem operacji jest tensor zagregowanej reprezentacji cech całej sylwetki (tzw.
+\textit{embedding}) o wymiarach $1 \times 768$. Uzyskany wektor $\mathbf{v}$ poddawany jest na
+wyjściu normalizacji L2 według wzoru: $$ \mathbf{v}_{norm} = \frac{\mathbf{v}}{||\mathbf{v}||_2} $$
+Operacja ta nakłada wektory cech na jednostkową sferę wielowymiarową, co jest warunkiem koniecznym
+do poprawnego zastosowania odległości cosinusowej w procesie globalnej oceny podobieństwa.
+
+\section{Globalna asocjacja danych (Multi-Camera Association)}
+
+Wielowątkowy potok danych zbiega się w obiekcie klasy \texttt{GlobalTracker}, pełniącej rolę
+nadrzędnego zarządcy tożsamości. Głównym wyzwaniem tego modułu jest matematyczne udowodnienie, że
+sylwetki wyekstrahowane z różnych kamer w różnym czasie należą do tego samego pieszego.
+
+\subsection{Konstrukcja macierzy kosztów i łączenie błędów}
+
+Algorytm w każdej klatce buduje globalną macierz odległości, oceniając stopień dopasowania
+wszystkich nowo nadesłanych detekcji względem obiektów istniejących w bazie. Problem
+reidentyfikacji rozszerzono o weryfikację fizyczną, tworząc hybrydową macierz kosztów, na którą
+składają się:
+\begin{enumerate}
+  \item \textbf{Koszt wizualny:} Wyliczany przy pomocy zoptymalizowanej funkcji z biblioteki SciPy, polegający na wyznaczeniu odległości cosinusowej pomiędzy znormalizowanymi wektorami Re-ID. Odległość bliska zeru oznacza skrajnie wysoką zbieżność tekstur i proporcji ubioru.
+  \item \textbf{Koszt przestrzenny:} Metryka euklidesowa wyznaczana na podstawie pozycji obiektów przeniesionych na globalną płaszczyznę mapy rzutu pionowego (Bird's-Eye View). Weryfikacja dokładnego procesu transformacji współrzędnych z ujęcia kamery na mapę BEV zostanie szczegółowo omówiona w rozdziale \ref{chap:integracja_mapy}.
+\end{enumerate}
+
+W celu redukcji obciążenia obliczeniowego wprowadzono zaporowe progi odcięcia (np.
+\texttt{max\_visual\_cost}). Jeśli badana para przekracza ustalony dystans euklidesowy lub
+cosinusowy, przypisywany jest jej ryczałtowo skrajnie wysoki koszt (tzw. koszt zaporowy), co
+natychmiast eliminuje ją z grafu poszukiwań jako parę fizycznie niemożliwą.
+
+\subsection{Dopasowanie z użyciem algorytmu węgierskiego}
+
+Wygenerowana hybrydowa macierz kosztów stanowi wejście dla dyskretnej optymalizacji algorytmu
+węgierskiego (metody Kuhna-Munkresa). Wykorzystano w tym celu implementację
+\texttt{linear\_sum\_assignment} pakietu \texttt{scipy.optimize}. Algorytm ten rozwiązuje problem
+asocjacji w grafie dwudzielnym w czasie wielomianowym, wyznaczając takie relacje "jeden do
+jednego", które minimalizują globalną sumę przypisań dla całego skrzyżowania. Stanowi to kluczowy
+element radzenia sobie z problemem martwych stref między polami widzenia, gwarantując najmniejszy
+błąd asocjacji, nawet gdy w obrębie ujęć kilku kamer pojawią się wizualnie podobni przechodnie.
+
+\subsection{Zarządzanie cyklem życia globalnych identyfikatorów}
+
+Ostatnim etapem procesu jest zatwierdzenie wyników asocjacji oraz aktualizacja grafu tożsamości.
+Pomyślnie dopasowane detekcje natychmiast odświeżają wektory cech oraz globalne pozycje fizyczne w
+obiekcie \texttt{GlobalTracker}.
+
+Zarządzanie trajektoriami jest silnie deterministyczne. Nowe wykrycia, dla których algorytm
+węgierski nie zdołał dopasować istniejącej historii, rejestrowane są jako nowe globalne
+identyfikatory (\textit{Global ID}). Równolegle zastosowano mechanizm obsługi tzw. wygasających
+ścieżek. W sytuacji, gdy przechodzień trwale opuści pole widzenia wszystkich kamer monitoringu,
+jego identyfikator nie jest od razu porzucany. System inkrementuje licznik brakujących klatek
+(\texttt{missed\_frames}), przechowując tożsamość w stanie uśpienia. Dopiero po przekroczeniu
+ustalonego bufora czasowego, struktury przechowujące jego wektory cech są bezpowrotnie zwalniane z
+pamięci operacyjnej, zapobiegając przepełnieniu zunifikowanej pamięci RAM układu.
+
+\usetikzlibrary{positioning}
+\begin{figure}[htbp]
+  \centering
+  \begin{tikzpicture}[
+      global_node/.style={circle, draw=blue!80, fill=blue!10, thick, minimum size=1.1cm, align=center},
+      det_node/.style={circle, draw=orange!80, fill=orange!10, thick, minimum size=1.1cm, align=center},
+      matched_edge/.style={->, >=stealth, ultra thick, green!50!black},
+      rejected_edge/.style={->, >=stealth, thin, dashed, gray},
+      font=\small
+    ]
+
+    % Lewa kolumna: Global IDs
+    \node[global_node] (G1) at (0, 3) {$G_1$};
+    \node[global_node] (G2) at (0, 0) {$G_2$};
+
+    % Prawa kolumna: Detekcje z kamer
+    \node[det_node] (D1) at (6, 3.5) {$D_{c1,1}$};
+    \node[det_node] (D2) at (6, 0.5) {$D_{c2,1}$};
+    \node[det_node] (D3) at (6, -2.5) {$D_{c2,2}$};
+
+    % Podpisy kolumn
+    \node[above=0.3cm of G1, font=\bfseries] {Istniejące tożsamości (Global ID)};
+    \node[above=0.3cm of D1, font=\bfseries] {Nowe detekcje (Z kamer)};
+
+    % Krawędzie od G1
+    \draw[matched_edge] (G1) -- node[above, sloped, font=\footnotesize] {$C = 0.15$ (Przyjęte)} (D1);
+    \draw[rejected_edge] (G1) -- node[above, near end, sloped, font=\tiny] {$C = 0.62$} (D2);
+
+    % Krawędzie od G2
+    \draw[rejected_edge] (G2) -- node[below, near start, sloped, font=\tiny] {$C = 0.78$} (D1);
+    \draw[matched_edge] (G2) -- node[below, sloped, font=\footnotesize] {$C = 0.08$ (Przyjęte)} (D2);
+
+    % Nowy obiekt bez dopasowania
+    \node[right=0.2cm of D3, font=\footnotesize\itshape, color=red!70!black] {Brak połączenia ($C > C_{max}$) $\rightarrow$ Tworzenie $G_3$};
+
+  \end{tikzpicture}
+  \caption{Ilustracja procesu globalnej asocjacji danych za pomocą grafu dwudzielnego. Algorytm węgierski szuka takich połączeń (pogrubione zielone linie), które minimalizują sumę kosztów $C$ opartych na odległości Re-ID oraz geometrii BEV. Detekcja $D_{c2,2}$ nie spełnia progów podobieństwa i inicjuje nowy identyfikator $G_3$.}
+  \label{fig:bipartite_matching}
+\end{figure}
+
 \chapter{Integracja widoku wielokamerowego i rzutowanie na mapę}\label{chap:integracja_mapy}
+
+Zastosowanie pojedynczych kamer w systemach wizyjnych dostarcza precyzyjnych informacji o
+lokalizacji obiektów wyłącznie w dwuwymiarowej przestrzeni obrazu (wyrażonej w pikselach).
+Rozwiązanie problemu śledzenia obiektów w rozproszonej sieci kamer (MTMC) wymaga sprowadzenia tych
+niezależnych obserwacji do wspólnego układu odniesienia. W niniejszym rozdziale przedstawiono
+implementację transformacji perspektywicznej do układu rzutu pionowego, powszechnie określanego
+jako widok z lotu ptaka (\textit{ang. Bird's-Eye View} -- BEV). Opisano również metody weryfikacji
+przestrzennej oparte na probabilistycznej mapie zajętości (POM), które korygują błędy rzutowania
+wynikające z okluzji w gęstym ruchu miejskim
+
+\section{Wyznaczanie i aplikacja macierzy homografii}
+Fundamentem integracji geometrycznej w zaimplementowanym systemie jest technika odwrotnego
+mapowania perspektywicznego (\textit{ang. Inverse Perspective Mapping} -- IPM). Przyjmując
+założenie, że obserwowany obszar stanowi płaską płaszczyznę terenu ($z=0$), pełny model projekcji
+kamery redukuje się do płaskiego przekształcenia rzutowego, opisywanego przez macierz homografii
+$\mathbf{H}$ o wymiarach $3 \times 3$.
+
+\subsection{Model geometryczny i odwrotne mapowanie perspektywiczne (IPM)}
+
+Zależność pomiędzy punktem na płaszczyźnie obrazu z kamery a jego rzeczywistym położeniem na
+globalnej mapie BEV opisana jest równaniem: $$ \lambda \begin{bmatrix} x' \\ y' \\ 1 \end{bmatrix} = \mathbf{H} \begin{bmatrix} x \\ y \\ 1 \end{bmatrix} $$
+gdzie $(x, y)$ to współrzędne pikselowe w obrazie źródłowym, $(x', y')$ reprezentują skorygowane współrzędne w układzie mapy, a $\lambda$ stanowi współczynnik skali układu współrzędnych jednorodnych.
+
+W systemie proces ten jest aplikowany do punktu reprezentującego środek dolnej krawędzi ramki
+otaczającej, stanowiącego estymowany punkt styku pieszego z podłożem. Do realizacji przekształcenia
+w czasie rzeczywistym wykorzystano funkcję \texttt{cv2.perspectiveTransform} z biblioteki OpenCV.
+Dzięki natywnej optymalizacji biblioteki i integracji z pakietem Apple Accelerate na architekturze
+układu M5, operacje te ulegają wektoryzacji i są wykonywane w ułamkach milisekund, nie obciążając
+głównego wątku analitycznego.
+
+> **Wskazówka graficzna 1 (Rzutowanie IPM):** W tym miejscu rekomendowane jest wstawienie grafiki składającej się z dwóch obok siebie położonych obrazów. Po lewej widok z pojedynczej kamery z naniesionym wielokątem (np. obrysowanym obszarem skrzyżowania). Po prawej stronie idealnie płaska mapa z góry (BEV), na którą ten sam wielokąt jest przekształcony w prostokąt. Pomiędzy obrazami strzałka z podpisem "Homografia $\mathbf{H}$".
+
+\section{Ograniczenia rzutowania i identyfikacja problemu okluzji}
+
+Wykorzystanie statycznej macierzy homografii dostarcza wysoce precyzyjnych wyników pod warunkiem,
+że estymowany punkt referencyjny faktycznie leży na płaszczyźnie gruntu. Zjawiska występujące w
+zatłoczonym środowisku miejskim drastycznie naruszają to założenie, prowadząc do znaczących
+odchyleń w wyznaczaniu globalnej pozycji.
+
+\subsection{Zjawisko błędu paralaksy w gęstym ruchu}
+Gdy przechodnie poruszają się w zwartych grupach, dochodzi do wzajemnego przesłaniania się obiektów
+(okluzji). W takiej sytuacji moduł detekcji YOLOv8 wyznacza dolną krawędź ramki otaczającej dla
+obiektu zasłoniętego na wysokości ciała osoby znajdującej się bliżej obiektywu, a nie na
+rzeczywistym podłożu. Rzutowanie takiego punktu za pomocą macierzy IPM prowadzi do tzw. błędu
+paralaksy – sztucznego odsunięcia obiektu na mapie w kierunku osi optycznej kamery. Konsekwencją
+tego błędu jest drastyczne zafałszowanie odległości euklidesowych pomiędzy pieszymi w module
+\texttt{GlobalTracker}, co prowadzi do błędnego działania algorytmu asocjacji i niezamierzonego
+łączenia różnych tożsamości. Wymusiło to konieczność implementacji niezależnej weryfikacji
+zajętości przestrzeni opartej na fizycznym ruchu.
+
+\section{Modelowanie tła i ekstrakcja fizycznego ruchu}
+
+Aby zweryfikować, czy obszar zadeklarowany przez moduł głębokiego uczenia jest faktycznie zajęty
+przez pieszego, zaimplementowano proces wyodrębniania ruchomego pierwszego planu. Wykorzystano do
+tego klasyczne techniki analizy tła (\textit{ang. Background Subtraction} -- BGS).
+
+\subsection{Inicjalizacja algorytmu mieszanin gaussowskich (MOG2)}
+
+Do detekcji zmian w pikselach wykorzystano algorytm \texttt{cv2.createBackgroundSubtractorMOG2}. W
+odróżnieniu od podejść opartych na gęstych sieciach głębokich, MOG2 charakteryzuje się bardzo
+niskim narzutem na pamięć operacyjną, modelując każdy piksel jako adaptacyjną mieszaninę rozkładów
+normalnych. Mechanizm automatycznej eliminacji komponentów gaussowskich (oparty na ujemnym
+współczynniku rozkładu a priori Dirichleta) skutecznie uodparnia maskę binarnego ruchu na wolno
+zmieniające się warunki oświetleniowe oraz dynamiczne tło, takie jak drgająca na wietrze roślinność
+
+\subsection{Przetwarzanie morfologiczne masek binarnego ruchu}
+
+Surowy obraz wygenerowany przez moduł MOG2 jest podatny na występowanie szumu pomiarowego w postaci
+izolowanych, pojedynczych pikseli. Z tego względu zaimplementowano krok przetwarzania
+morfologicznego. Maska ruchu poddawana jest operacji otwarcia morfologicznego
+(\texttt{cv2.morphologyEx} z flagą \texttt{cv2.MORPH\_OPEN}), co matematycznie odpowiada operacji
+erozji, po której następuje dylatacja. Zastosowanie odpowiednio dobranego elementu strukturalnego
+pozwala na usunięcie szumu oraz wygładzenie krawędzi kinetycznych, generując czysty, rzeczywisty
+obraz ruchu fizycznego na scenie.
+
+\begin{table}[htbp]
+  \centering
+  \caption{Parametry konfiguracyjne modułu analizy tła MOG2 i operacji morfologicznych. Źródło: opracowanie własne.}
+  \label{tab:params_mog2}
+  \renewcommand{\arraystretch}{1.3}
+  \begin{tabular}{|l|c|p{8cm}|}
+    \hline
+    \textbf{Parametr}      & \textbf{Wartość} & \textbf{Opis wpływu na system}                                                    \\ \hline
+    \texttt{history}       & 500              & Rozmiar okna czasowego (liczba klatek) wpływającego na modelowanie rozkładów tła. \\ \hline
+    \texttt{varThreshold}  & 16.0             & Próg wariancji decydujący o zaklasyfikowaniu piksela do przestrzeni ruchu.        \\ \hline
+    \texttt{detectShadows} & True             & Umożliwia identyfikację i ignorowanie cieni rzucanych przez pieszych na jezdnię.  \\ \hline
+    Element strukturalny   & $3 \times 3$     & Macierz (kernel) stosowana do operacji morfologicznego otwarcia maski ruchu.      \\ \hline
+  \end{tabular}
+\end{table}
+
+\section{Implementacja fuzji probabilistycznej mapy zajętości (POM)}
+
+Wiedza pozyskana z detektora YOLO (oparta na głębokich cechach semantycznych) oraz maski ruchu z
+MOG2 (oparta na zmianach pikseli) ulega fuzji w module Probabilistycznej Mapy Zajętości (POM).
+Implementacja tego etapu w kodzie realizuje matematyczne założenia minimalizacji błędu pomiędzy
+rzutem syntetycznym a obrazem rzeczywistym.
+
+\subsection{Generowanie rzutów syntetycznych (Obraz A)}
+
+Zgodnie z koncepcją POM, w pierwszej kolejności system tworzy syntetyczny obraz $A$. W pamięci
+operacyjnej inicjowana jest pusta (czarna) macierz \texttt{numpy.zeros} odpowiadająca
+rozdzielczości klatki kamery. Następnie skrypt iteruje po wszystkich ramkach otaczających
+wygenerowanych przez model YOLO. W miejscu wystąpienia predykcji, na czarnej planszy rysowane są
+białe, wypełnione prostokąty (\texttt{cv2.rectangle}). Stanowi to matematyczną hipotezę modułu AI o
+geometrycznym rozkładzie zajętości w danej klatce.
+
+\subsection{Mechanizm weryfikacji karania za niezgodność (Operacja XOR)}
+
+Wygenerowany syntetyczny obraz rzutów ($A$) zestawiany jest ze skorygowaną maską fizycznego ruchu
+pochodzącą z modułu MOG2 ($B$). Zgodnie z literaturą, miara pseudoodległości wykorzystywana do
+weryfikacji zajętości komórek definiowana jest równaniem: $$ \Psi(B,A) = \frac{1}{\sigma} \frac{|B
+    \otimes (1 - A) + (1 - B) \otimes A|}{|A|} $$ Licznik powyższego równania stanowi reprezentację
+matematycznej różnicy symetrycznej (alternatywy wykluczającej). Aby zapewnić wydajność potoku,
+operację tę zaimplementowano z wykorzystaniem funkcji \texttt{cv2.bitwise\_xor}.
+
+Po nałożeniu obu masek piksele, które pokrywają się w obu obrazach (YOLO deklaruje człowieka i MOG2
+rejestruje w tym miejscu ruch), są uznawane za zweryfikowane geometrycznie. Z kolei obszary
+konfliktu (np. ramka YOLO "wisząca" w powietrzu na skutek błędu paralaksy, gdzie MOG2 zgłasza
+statyczne tło) są identyfikowane i nakładana jest na nie kara geometryczna. Powoduje to odrzucenie
+błędnie wyestymowanego styku obiektu z podłożem, korygując ostateczne mapowanie do przestrzeni BEV.
+
+> **Wskazówka graficzna 2 (Ilustracja procesu POM - Różnica Symetryczna):** Jest to idealne miejsce na dodanie zestawienia 3 zminiaturyzowanych kadrów wideo.
+> 1. Obraz "A": Czarne tło i na nim idealne białe kwadraty w miejscach detekcji YOLO.
+> 2. Obraz "B": Surowy, zaszumiony, rzeczywisty biało-czarny obraz ruchu wygenerowany przez MOG2.
+> 3. Wynik (Operacja XOR): Obraz prezentujący tylko błędy (piksele konfliktu), które pozwalają algorytmowi skorygować błąd rzutu.
+
+\section{Fuzja w module asocjacji i globalna mapa BEV}
+
+Informacje geometryczne, pomyślnie przetransformowane oraz skorygowane przez mechanizm POM,
+przekazywane są do modułu głównego (\texttt{GlobalTracker}) jako argumenty do weryfikacji
+tożsamości.
+
+\subsection{Kalkulacja kosztu przestrzennego}
+
+Skorygowane współrzędne z lotu ptaka służą bezpośrednio do obliczenia dystansu przestrzennego na
+mapie MTMC. Zastosowano standardową metrykę euklidesową: $$ d(p_1, p_2) = \sqrt{(x_2 - x_1)^2 +
+    (y_2 - y_1)^2} $$ Wartość ta stanowi komponent wagowy w ogólnej macierzy kosztów asocjacji
+(omawianej w poprzednim rozdziale), będąc bezwzględnym weryfikatorem poprawności łączenia
+tożsamości. Ustalenie fizycznego dystansu chroni system przed "teleportowaniem" tożsamości pieszego
+do innej części skrzyżowania wyłącznie na podstawie zbieżności ubioru.
+
+\subsection{Renderowanie ostatecznej, zunifikowanej przestrzeni MTMC}
+
+Zwieńczeniem całego potoku przetwarzania jest wygenerowanie metrycznej, cyfrowej reprezentacji
+obserwowanego obszaru w czasie rzeczywistym. System posiada dynamicznie alokowaną siatkę zajętości,
+na której nanosi weryfikowane globalne tożsamości pieszych w postaci punktów. Każda naniesiona
+trajektoria wzbogacona jest o metadane (Globalne ID oraz macierzysty węzeł kamery). Wynikowy rzut z
+lotu ptaka nie tylko ułatwia wizualną inspekcję poprawności działania całego systemu kalibracyjnego
+i reidentyfikacyjnego, ale przede wszystkim dostarcza znormalizowanych danych gotowych do analiz i
+ewaluacji za pomocą dedykowanych metryk statystycznych, takich jak np. ewaluator TrackEval.
+
 \chapter{Badanie i analiza efektywności systemu}\label{chap:badanie_efektywności}
 \chapter{Podsumowanie i wnioski}\label{chap:podsumowanie}
 

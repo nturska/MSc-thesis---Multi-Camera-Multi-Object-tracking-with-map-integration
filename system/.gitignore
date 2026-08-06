@@ -1,5 +1,6 @@
-mtmc_env/*
-env/
+
+mtmc_env/
+venv/
 env/
 
 .DS_Store
@@ -11,21 +12,29 @@ __pycache__/
 *$py.class
 *.so
 
-data/videos/*.mp4
-data/videos/*.avi
-data/videos/*.mov
-data/videos/*.mkv
+data/
+results/
+
+
 
 *.pt
 *.pth
 *.onnx
-models/yolo_weights/*
-models/reid_weights/*
+models/*
 .huggingface/
+
 
 runs/
 *.log
 
+
 .vscode/
 .idea/
 *.swp
+.env
+
+TrackEval/
+
+*.pt
+*.pth
+*.weights
