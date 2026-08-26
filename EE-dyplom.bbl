@@ -1337,7 +1337,7 @@
       \field{labelnamesource}{author}
       \field{labeltitlesource}{title}
       \field{journaltitle}{PeerJ Computer Science}
-      \field{title}{Background Substraction in difficult weather conditions}
+      \field{title}{Background Segmentation in difficult weather conditions}
       \field{year}{2022}
     \endentry
     \entry{krizhevsky2012imagenet}{inproceedings}{}{}
@@ -1838,6 +1838,69 @@
       \verb{doi}
       \verb 10.1007/978-3-319-46448-0_2
       \endverb
+    \endentry
+    \entry{luiten2021hota}{article}{}{}
+      \true{moreauthor}
+      \true{morelabelname}
+      \name{author}{7}{}{%
+        {{hash=52a0f00e93383c4960ddfc421a3b55c4}{%
+           family={Luiten},
+           familyi={L\bibinitperiod},
+           given={Jon},
+           giveni={J\bibinitperiod}}}%
+        {{hash=9eb84424ec2ae8b1fcdbc0fba52982b8}{%
+           family={Osep},
+           familyi={O\bibinitperiod},
+           given={Aljosa},
+           giveni={A\bibinitperiod}}}%
+        {{hash=192286cfb7c970e94a60f179f89e2ff6}{%
+           family={Dadashev},
+           familyi={D\bibinitperiod},
+           given={Dmytro},
+           giveni={D\bibinitperiod}}}%
+        {{hash=5dd058016d9bf7f714e5aad485056ddb}{%
+           family={Cornelis},
+           familyi={C\bibinitperiod},
+           given={Nico},
+           giveni={N\bibinitperiod}}}%
+        {{hash=929fecd94e61f8aefb0db02ab0debe04}{%
+           family={Kreiss},
+           familyi={K\bibinitperiod},
+           given={Sven},
+           giveni={S\bibinitperiod}}}%
+        {{hash=9d77cb1dfed191a63c5284a2f4456909}{%
+           family={Leal-Taixé},
+           familyi={L\bibinithyphendelim T\bibinitperiod},
+           given={Laura},
+           giveni={L\bibinitperiod}}}%
+        {{hash=1eed5252677bbc0d207eb1cc4412fbbb}{%
+           family={Bastian},
+           familyi={B\bibinitperiod},
+           given={Aljosa},
+           giveni={A\bibinitperiod}}}%
+      }
+      \list{publisher}{1}{%
+        {Springer}%
+      }
+      \strng{namehash}{64188cebbcb2021bfc028271300a81f3}
+      \strng{fullhash}{0d219fcc66d549a6db589ea27e816183}
+      \strng{fullhashraw}{0d219fcc66d549a6db589ea27e816183}
+      \strng{bibnamehash}{64188cebbcb2021bfc028271300a81f3}
+      \strng{authorbibnamehash}{64188cebbcb2021bfc028271300a81f3}
+      \strng{authornamehash}{64188cebbcb2021bfc028271300a81f3}
+      \strng{authorfullhash}{0d219fcc66d549a6db589ea27e816183}
+      \strng{authorfullhashraw}{0d219fcc66d549a6db589ea27e816183}
+      \field{sortinit}{L}
+      \field{sortinithash}{7c47d417cecb1f4bd38d1825c427a61a}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{journaltitle}{International Journal of Computer Vision}
+      \field{number}{2}
+      \field{title}{Hota: A scaffold for enforcing strict consistency in multi-object tracking evaluation}
+      \field{volume}{129}
+      \field{year}{2021}
+      \field{pages}{548\bibrangedash 570}
+      \range{pages}{23}
     \endentry
     \entry{mallot1991}{article}{}{}
       \name{author}{4}{}{%
