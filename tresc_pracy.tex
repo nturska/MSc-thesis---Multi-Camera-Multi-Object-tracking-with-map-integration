@@ -1,3 +1,4 @@
+% !TEX root = EE-dyplom.tex
 \chapter{Wstęp}\label{chap:wprowadzenie}
 
 \chapter{Stan wiedzy}\label{chap:stan_wiedzy}
@@ -371,11 +372,6 @@ metryki~\cite{cdnet2014}:
         \end{equation}
 \end{itemize}
 
-Wymienione metryki są standardowo stosowane w~benchmarku CDnet 2014~\cite{cdnet2014}, który stanowi
-punkt odniesienia dla porównania algorytmów BGS w~niniejszej pracy. Metryki oceny śledzenia wielu
-obiektów (MOTA, HOTA, IDF1) oraz reidentyfikacji (Rank-1/CMC) zostają omówione w~kolejnych
-podrozdziałach poświęconych odpowiednio modułom detekcji i~śledzenia.
-
 \subsection{Analiza porównawcza i ewaluacja efektywności}
 
 \subsubsection{Porównanie wydajności algorytmów BGS w trudnych warunkach atmosferycznych}
@@ -744,11 +740,27 @@ globalnej optymalizacji algorytmu węgierskiego pozwala systemowi na precyzyjne 
 położonych obiektów i mitygację błędów typu \textit{ID switch}.
 
 \subsection{Ewolucja kluczowych algorytmów śledzenia}
-Rozwój algorytmów klasy MOT doprowadził do powstania kilku przełomowych architektur, stopniowo
-rozwiązujących problemy okluzji i wydajności obliczeniowej.
 
-\subsubsection{SORT \textit{(ang. Simple Online and Realtime Tracking)}, 2016:}
-Minimalistyczny algorytm łączący predykcję filtrem Kalmana i dopasowanie oparte na metryce IoU za
+\subsubsection{Tło historyczne i przejście z SOT do MOT}
+
+Wczesne metody śledzenia obiektów w sekwencjach wideo koncentrowały się głównie na zadaniu
+śledzenia pojedynczego obiektu (\textit{ang. Single Object Tracking -- SOT}). Przykładem algorytmu
+tego typu jest model TLD (\textit{ang. Tracking-Learning-Detection}), w literaturze znany jako
+algorytm \textit{Predator}~\cite{kalal2012tld}. Zastosowano w nim przełomowy schemat uczenia w
+locie, w którym detektor i tracker ściśle ze sobą współpracowały, a system na bieżąco aktualizował
+model wyglądu pojedynczego obiektu na podstawie napływających klatek.
+
+SOT opierał się jednak na założeniu, że w scenie występuje tylko jeden cel o unikalnej
+charakterystyce, co czyniło go całkowicie bezużytecznym w rzeczywistych scenariuszach monitoringu
+miejskiego. W gęstym tłumie piesi stale się zasłaniają, krzyżują swoje ścieżki i wykazują wysokie
+podobieństwo wizualne. Rozwiązaniem stał się paradygmat śledzenia przez detekcję (TBD, \textit{ang.
+  Tracking-by-Detection}), który rozdzielił proces na dwa etapy: niezależne wykrywanie obiektów w
+każdej klatce za pomocą zewnętrznego detektora oraz ich globalne łączenie w spójne trajektorie w
+czasie. Rozwój algorytmów klasy MOT doprowadził do powstania kilku przełomowych architektur,
+stopniowo rozwiązujących problemy okluzji i wydajności obliczeniowej.
+
+\subsubsection{SORT \textit{(ang. Simple Online and Realtime Tracking)}, 2016}
+Wraz z rewolucją głębokiego uczenia w detekcji dwuwymiarowej, w 2016 roku zaprezentowano algorytm SORT~\cite{bewley2016}, minimalistyczny algorytm łączący predykcję filtrem Kalmana i dopasowanie oparte na metryce IoU za
 pomocą algorytmu węgierskiego~\cite{wojke2017}. Dzięki prostej budowie cechuje się dużą szybkością - aktualizuje
 ścieżki z częstotliwościom 260 $Hz$~\cite{bewley2016}, jednak jest podatny na gubienie tożsamości w
 przypadku nawet krótkotrwałego zasłonięcia obiektu~\cite{bewley2016, wojke2017}.
@@ -757,9 +769,29 @@ przypadku nawet krótkotrwałego zasłonięcia obiektu~\cite{bewley2016, wojke20
 Rozwinięcie algorytmu SORT o mechanizm asocjacji oparty na głębokich cechach
 wizualnych~\cite{wojke2017}. Poprzez zastosowanie dedykowanej sieci CNN, wytrenowanej na zadanie
 reidentyfikacji, Deep SORT wyznacza deskryptory wizualne obiektów. Pozwala to na poprawne
-powiązanie tożsamości po długotrwałych okluzjach, drastycznie redukując liczbę błędnych przełączeń
-tożsamości (ang. \textit{ID switches}) – w badaniach wykazano spadek tego błędu o 45\% w stosunku
-do SORT~\cite{wojke2017}.
+powiązanie tożsamości po długotrwałych okluzjach, redukując liczbę błędnych przełączeń tożsamości
+(ang. \textit{ID switches}) – w badaniach wykazano spadek tego błędu o 45\% w stosunku do
+SORT~\cite{wojke2017}.
+
+\subsubsection{Modele Onse-Shot -- JDE i FairMOT, 2020}
+
+Szybki wzrost zapotrzebowania na systemy działające w czasie rzeczywistym doprowadził do powstania
+nurtu modeli zintegrowanych (\textit{ang. One-Shot MOT / Joint Detection and Embedding}).
+Reprezentantami tej grupy stały się algorytmy JDE (\textit{ang. Joint Detection and
+  Embedding})~\cite{wang2020jde} oraz FairMOT~\cite{zhang2021fairmot}.
+
+Zamiast stosować dwustopniową architekturę w której najpierw działa ciężki detektor, a potem
+niezależny ekstraktor cech Re-ID, twórcy realizowali te zadania wewnątrz jednej sieci neuronowej.
+Wspólna sieć posiadała rozgałęzioną głowicę, jedna z nich generowała ramki detekcyjne, a druga
+bezpośrednio generowała wektory cech Re-ID dla każdego piksela~\cite{zhang2021fairmot}.
+
+Choć podejście to pozwoliło na uzsyskanie płynności czasu rzeczywisteg (ponad 30 FPS na pojedynczej
+karcie graficznej), obnażyło ono konflikt zadań (\textit{ang. task
+  conflict})~\cite{zhang2021fairmot, li2023rethinking}. Detekcja obiektów wymaga cech niezależnych od
+tożsamości, wystarczy zidentyfikować obiekt, podczas gdy zadanie Re-ID wymaga cech możliwie
+najbardziej charakterystycznych, pozwalająych odróżnić osobę A od osoby B~\cite{zhang2021fairmot}.
+Konflikt ten powodował, że modele One-Shot osiągały niższą dokładność śledzenia i gorszy wskaźnik
+IDF1 w porównaniu z podejściami dwustopniowymi~\cite{aharon2022, zhang2022}.
 
 \subsubsection{ByteTrack, 2022}
 Autorzy tego algorytmu~\cite{zhang2022} zwrócili uwagę na wadę wcześniejszych metod, polegającą na
@@ -770,19 +802,122 @@ mechanizm asocjacji BYTE. W pierwszym kroku system standardowo dopasowuje detekc
 ufności. Jeśli po tym etapie istnieją nieprzypisane trajektorie, algorytm przechodzi do drugiego
 kroku. Zamiast usuwać słabe detekcje jako szum tła, system sprawdza, czy ich geometria pokrywa się
 z miejscem, w którym filtr Kalmana przewidywał obecność śledzonego wcześniej obiektu. W tej fazie
-celowo wykorzystuje się wyłącznie podobieństwo przestrzenne (metrykę IoU), ignorując cechy
+celowo wykorzystuje się wyłącznie podobieństwo przestrzenne -- metrykę IoU, ignorując cechy
 wizualne, które przy silnej okluzji są niewiarygodne. Zaufanie słabej detekcji, o ile znajduje się
 ona w przewidywanym miejscu, pozwala z sukcesem kontynuować śledzenie trudnych do wykrycia
 obiektów, co ogranicza fragmentację ścieżek i redukuje liczbę błędów typu False Negative.
 
 \subsubsection{BoT-SORT, 2022}
-Zestaw optymalizacji (\textit{ang. bag of tricks}) zintegrowany z algorytmem ByteTrack, który
-wprowadza trzy zmiany rozwiązujące główne ograniczenia wcześniejszych metod~\cite{aharon2022}:
+Zestaw optymalizacji (\textit{ang. bag of tricks}) zintegrowany z algorytmem ByteTrack, wprowadza
+trzy zmiany rozwiązujące główne ograniczenia wcześniejszych metod~\cite{aharon2022}:
 \begin{itemize}
-  \item \textbf{Kompensację ruchu kamery (CMC):} Wykorzystuje globalną kompensację ruchu (GMC) oraz rzadki przepływ optyczny do estymacji transformacji tła. Pozwala to na matematyczną korektę wektora stanu filtru Kalmana, zapobiegając rozbieżnościom i utracie ścieżek przy drganiach lub gwałtownych ruchach kamery.
+  \item \textbf{Kompensację ruchu kamery:} Wykorzystuje globalną kompensację ruchu oraz rzadki przepływ optyczny do estymacji transformacji tła. Pozwala to na matematyczną korektę wektora stanu filtru Kalmana, zapobiegając rozbieżnościom i utracie ścieżek przy drganiach lub gwałtownych ruchach kamery.
   \item \textbf{Zmodyfikowany wektor stanu:} Wprowadza bezpośrednie modelowanie szerokości i wysokości ramki ograniczającej w filtrze Kalmana, rezygnując z powszechnie stosowanej miary proporcji boków. Zmiana ta poprawiła precyzję dopasowania predykcji do rzeczywistej szerokości obiektów.
   \item \textbf{Nowy mechanizm łączenia macierzy kosztów:} Integruje odległość przestrzenną IoU oraz unikalne cechy wyglądu Re-ID. Zamiast stosowanej powszechnie sumy ważonej, algorytm jako ostateczny koszt przypisania wybiera wartość minimalną z obu macierzy (po uprzednim odfiltrowaniu niemożliwych par), co zwiększa skuteczność kojarzenia obiektów po okluzjach.
 \end{itemize}
+
+\subsubsection{OC-SORT i Deep OC-SORT (2022-2023): Odporność na ruch nieliniowy}
+
+Równolegle z rozwojem BoT-SORT, autorzy algorytmu OC-SORT (\textit{ang. Observation-Centric
+  SORT})~\cite{cao2023ocsort} zidentyfikowali inny problem algorytmów opartych na filtrze Kalmana ---
+wrażliwość na ruch nieliniowy i akumulację błędów podczas okluzji. Zasłonięcie obiektu na dłuższy
+czas, skutkuje brakiem nowych pomiarów, co uniemożliwia aktualizację parametrów filtru, a predykcje
+bazują na wcześniejszych oszacowaniach stanu. Powoduje to, że macierz kowariancji błędu rośnie
+kwadratowo, a wektor stanu dryfuje w kierunku ostatnio oszacowanej prędkości. Gdy obiekt pojawia
+się ponownie w polu widzenia, jego rzeczywiste położenie drastycznie odbiega od przewidywanego
+przez filtr, co prowadzi do utraty ciągłości trajektorii~\cite{cao2023ocsort}.
+
+OC-SORT (\textit{ang. Observation-Centric SORT}) rozwiązał te problemy poprzez trzy mechanizmy
+koncentrujące się na rzeczywistych obserwacjach~\cite{cao2023ocsort}:
+\begin{itemize}
+  \item \textbf{Observation-Centric Re-Update:} W momencie ponownego wykrycia obiektu po okluzji, wykonywana jest wsteczna korekta trajektorii. Wygenerowany wirtualny potok pomiarów łączy ostatnią pozycję przed okluzją z pierwszą pozycją po okluzji, a następnie uruchamiana jest pętla aktualizacji filtru Kalmana wstecz, znacząco redukując nagromadzony błąd parametrów dynamicznych~\cite{cao2023ocsort}.
+  \item \textbf{Observation-Centric Momentum:} Wprowadza spójność kierunku ruchu do macierzy kosztów. OCM mierzy kąt wektora prędkości trajektorii i porównuje go z kątem wektora łączącego historyczną pozycję z nową detekcją, nakładając kary za gwałtowne, nienaturalne zmiany kierunku pieszego~\cite{cao2023ocsort}.
+  \item \textbf{Observation-Centric Recovery:} Heurystyczny etap asocjacji uruchamiany po głównej pętli dopasowania. Pozwala na bezpośrednie parowanie zagubionych trajektorii z nowymi detekcjami na podstawie ich ostatnich znanych, fizycznych współrzędnych pomiarowych, omijając potencjalnie błędne predykcje filtru Kalmana~\cite{cao2023ocsort}.
+\end{itemize}
+
+Bezpośrednie rozwinięcie tego modelu stanowi algorytm Deep OC-SORT~\cite{maggiolino2023deepocsort}.
+Łączy on model ruchu OC-SORT z zaawansowanym modułem dynamicznego modelowania wyglądu (DA,
+\textit{ang. Dynamic Appearance}) oraz adaptacyjnego ważenia (AW, \textit{ang. Adaptive
+  Weighting}), które automatycznie zwiększa wagę cech wizualnych Re-ID, gdy dana osoba porusza się w
+sposób unikalny i łatwy do odróżnienia od otaczającego tłumu~\cite{maggiolino2023deepocsort}.
+Modele te osiągnęły wybitną skuteczność na zbiorze DanceTrack, charakteryzującym się skrajnie
+nieliniowymi ruchami i częstym krzyżowaniem się obiektów o identycznym
+wyglądzie~\cite{maggiolino2023deepocsort}.
+
+\subsubsection{Hybrid-SORT, 2023}
+
+W 2023 został zaprezentowany algorytm Hybrid-SORT, postawiono tezę, że dotychczasowe modele zbyt
+jednostronnie opierały się wyłącznie na cechach silnych (\textit{ang. strong cues}), czyli
+precyzyjnych współrzędnych przestrzennych (IoU) oraz głębokiej charakterystyce wizualnej
+(Re-ID)~\cite{yang2024hybridsort}. W gęstym tłumie, cechy silne ulegają natychmiastowej degradacji:
+nakładające się na siebie ramki generują ekstremalnie wysokie wartości IoU dla różnych osób, a
+wektory Re-ID zostają zanieczyszczone pikselami obiektów sąsiednich (tzw. zjawisko
+\textit{scene-bias} i okluzji czołowej)~\cite{yang2024hybridsort}.
+
+Hybrid-SORT wprowadził do potoku śledzenia modelowanie tzw. cech słabych (\textit{ang. weak cues}),
+które posiadają ograniczoną, ale wysoce stabilną zdolność dyskryminacyjną w trudnych
+warunkach~\cite{yang2024hybridsort}:
+\begin{itemize}
+  \item \textbf{Tracklet Confidence Modeling:} Śledzenie i modelowanie zmian współczynnika ufności ($conf$) detekcji za pomocą dodatkowej zmiennej w filtrze Kalmana~\cite{yang2024hybridsort}. Wartość ufności detektora spada liniowo, gdy pieszy wchodzi za przeszkodę (jest stopniowo zasłaniany) i rośnie, gdy z niej wychodzi. Informacja ta bezpośrednio wskazuje relację przód-tył (kto kogo zasłania) między nakładającymi się obiektami~\cite{yang2024hybridsort}.
+  \item \textbf{Height Modulated IoU:} Wysokość ramki pieszego ($h$) jest parametrem znacznie stabilniejszym i odporniejszym na ruch kończyn oraz deformacje ciała niż jej szerokość ($w$) czy pole powierzchni~\cite{yang2024hybridsort}. HMIoU modyfikuje klasyczną macierz IoU poprzez rygorystyczne nałożenie kary za nagłe zmiany wysokości obiektu, co odzwierciedla jego fizyczną głębokość w trójwymiarowej scenie (odległość od obiektywu kamery)~\cite{yang2024hybridsort}.
+\end{itemize}
+
+Zastosowanie Hybrid-SORT pozwoliło na poprawę skuteczności śledzenia na zbiorze DanceTrack ---
+wzrost z 55.1 do 62.2 HOTA, bez konieczności kosztownego trenowania nowych modeli i przy zachowaniu
+lekkości obliczeniowej algorytmów online~\cite{yang2024hybridsort}.
+
+\subsubsection{BoostTrack i BoostTrack++, 2024}
+
+Większość dotychczasowych wielostopniowych algorytmów asocjacji, takich jak ByteTrack, BoT-SORT czy
+Hybrid-SORT, paruje detekcje w kilku odizolowanych krokach. To podejście generuje ukryty problem:
+niepoprawne decyzje podejmowane w pierwszym kroku bezpowrotnie blokują dopasowania dla kroków
+kolejnych, co często powoduje niepotrzebne zmiany tożsamości~\cite{stanojevic2024boosttrackpp,
+  stanojevic2024boosttrack}.
+
+W 2024 roku zaprezentowano algorytm BoostTrack, a następnie jego rozwinięcie
+BoostTrack++~\cite{stanojevic2024boosttrackpp}. Autorzy powrócili do jednostopniowej asocjacji
+globalnej, wprowadzając mechanizm miękkiego wzmacniania ufności detekcji (\textit{ang. soft
+  detection confidence boost}) przed odrzuceniem jakichkolwiek ramek
+pomiarowych~\cite{stanojevic2024boosttrackpp}.
+
+Kluczowe innowacje BoostTrack++ opierają się na bogatej informacji historycznej całej trajektorii
+(\textit{ang. tracklet information})~\cite{stanojevic2024boosttrackpp}:
+\begin{itemize}
+  \item \textbf{Soft Buffered IoU:} Wprowadzono metrykę odległości geometrycznej, która rozszerza ramki detekcji o dynamiczny bufor bezpieczeństwa zależny od kowariancji błędu wyznaczonej przez filtr Kalmana. BIoU zapobiega odrzucaniu poprawnych detekcji pieszego, którego prędkość chwilowa uległa gwałtownej zmianie~\cite{stanojevic2024boosttrackpp}.
+  \item \textbf{Modelowanie podobieństwa hybrydowego:} Koszt asocjacji wyznaczany jest jako połączenie kształtu, odległości Mahalanobisa oraz metryki Soft BIoU~\cite{stanojevic2024boosttrackpp}:
+        \begin{equation}
+          S(D_i, T_j) = \text{IoU}(D_i, T_j) + \lambda_{IoU} c_{i,j} \text{IoU}(D_i, T_j) + \lambda_{MhD} S^{MhD}(D_i, T_j) + \lambda_{shape} S^{shape}(D_i, T_j)
+        \end{equation}
+  \item \textbf{Zmienne progi wzmocnienia (\textit{ang. Varying Threshold}):} System automatycznie dostosowuje próg wzmacniania ufności detektora w zależności od czasu, jaki upłynął od ostatniej aktualizacji danej trajektorii pomiarem, co drastycznie ogranicza powstawanie "trajektorii widmowych" (\textit{ang. ghost tracks}) przy jednoczesnym odzyskiwaniu prawdziwych pieszych po długich okluzjach~\cite{stanojevic2024boosttrackpp}.
+\end{itemize}
+
+Wdrożenie BoostTrack++ pozwoliło na osiągnięcie absolutnie najwyższych wyników dokładności
+śledzenia (wskaźniki HOTA i IDF1) na gęstym zbiorze MOT20~\cite{stanojevic2024boosttrackpp},
+wyznaczając nowe standardy efektywnego wykorzystania informacji historycznych trajektorii.
+
+\subsubsection{TrackTrack, 2025}
+
+Najnowszym przełomem w dziedzinie śledzenia online, zaprezentowanym na konferencji CVPR w 2025
+roku~\cite{shim2025tracktrack}, jest algorytm TrackTrack (\textit{ang. Track-Focused Online
+  Multi-Object Tracker}). Autorzy podważyli podejście w którym globalne rozwiązywanie problemu
+przydziału, na przykład przy użyciu algorytmu węgierskiego na pełnej macierzy kosztów, było zawsze
+optymalne dla systemów MOT. W rzeczywistych scenariuszach globalna minimalizacja kosztu
+sumarycznego potrafi dopasować detekcję pieszego A do ścieżki pieszego B wyłącznie po to, by
+matematycznie zoptymalizować globalny bilans błędów w całej klatce, co jest bezpośrednią przyczyną
+nagłych zmian tożsamości ($IDSW$)~\cite{shim2025tracktrack}.
+
+TrackTrack proponuje całkowite odwrócenie perspektywy i skupienie się na lokalnej charakterystyce
+samej ścieżki za pomocą dwóch elementów\cite{shim2025tracktrack}:
+\begin{itemize}
+  \item \textbf{Track-Perspective-Based Association:} Zamiast globalnego solvera, TPA analizuje macierz kosztów z perspektywy pojedynczych trajektorii. Iteracyjnie wyszukuje i paruje wyłącznie te pary trajektoria-detekcja, które prezentują minimum odległości zarówno w swoim wierszu, jak i kolumnie~\cite{shim2025tracktrack}. TPA bierze pod uwagę nie tylko wysokie i niskie detekcje, ale również ramki odrzucone przez heurystyczny algorytm NMS detektora, odzyskując okludowane sylwetki bezpośrednio z surowych predykcji sieci splotowej~\cite{shim2025tracktrack}.
+  \item \textbf{Track-Aware Initialization:} Całkowicie nowa metoda inicjalizacji trajektorii. TAI traktuje końcowe współrzędne stabilnie śledzonych pieszych jako nienaruszalne i aplikuje zmodyfikowany mechanizm NMS do zbioru niezmapowanych detekcji o wysokiej ufności~\cite{shim2025tracktrack}. Zapobiega to sztucznemu tworzeniu nowych, fałszywych trajektorii w bezpośrednim sąsiedztwie już istniejących ścieżek, eliminując zaszumienie wokół okluzji~\cite{shim2025tracktrack}.
+\end{itemize}
+
+Dzięki rezygnacji z globalnego parowania kombinatorycznego i wdrożeniu TPA/TAI, TrackTrack osiągnął
+najwyższe dotychczas wyniki na wszystkich najważniejszych benchmarkach --- MOT17, MOT20 oraz
+DanceTrack~\cite{shim2025tracktrack}. Wybitne wyniki tego algorytmu wskazują, że przyszłość
+systemów MOT leży w precyzyjnym modelowaniu lokalnego kontekstu trajektorii i ścisłej kontroli
+procesu inicjalizacji.
 
 \subsection{Ocena efektywności algorytmów MOT}
 
@@ -874,6 +1009,7 @@ MOTChallenge:
   \item \textbf{MOT16 / MOT17:} Zestaw składający się z 14 sekwencji wideo reprezentujących zróżnicowane warunki środowiskowe (sceny miejskie, zmienne oświetlenie, ruch pieszy)~\cite{milan2016}. Edycja MOT17 dostarcza wysoce precyzyjne adnotacje oraz dedykowany zestaw detekcji wygenerowanych przez trzy publiczne detektory (DPM, Faster R-CNN, SDP), co zapewnia uczciwość porównań metod~\cite{milan2016, zhang2022}.
 
   \item \textbf{MOT20:} Zbiór danych zaprojektowany specjalnie dla scen o skrajnie wysokim zagęszczeniu tłumu (np. rynki miejskie, hale koncertowe), charakteryzujący się występowaniem gęstych skupisk obiektów generujących permanentne okluzje~\cite{dendorfer2020}.
+  \item \textbf{DanceTrack:} Specyficzny, nowoczesny benchmark, w którym ludzie występują w jednolitych strojach do tańca przez co wyglądają niemal identycznie i poruszają się w sposób nieliniowy. Testuje on jakość asocjacji geometryczno-ruchowej, sprawiając, że proste modele oparte tylko na wyglądzie całkowicie na nim zawodzą~\cite{sun2022dancetrack}.
 \end{itemize}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -1432,193 +1568,180 @@ w celu nadania unikalnych identyfikatorów. Wdrożenie tak zaawansowanego potoku
 klasy brzegowej lub stacjach roboczych o ograniczonej charakterystyce energetycznej wymusza
 specyficzne, rygorystyczne podejście do doboru technologii oprogramowania. Niniejszy rozdział
 stanowi przegląd istniejących rozwiązań algorytmicznych oraz architektonicznych, a także
-uzasadnienie wyboru stosu technologicznego dla systemu MTMC budowanego w środowisku macOS. Docelową
-platformą uruchomieniową jest komputer MacBook Pro wyposażony w układ Apple Silicon M5. Z uwagi na
-unikalną specyfikę architektury sprzętowej Apple, standardowe i powszechnie stosowane w przemyśle
-rozwiązania oparte na środowisku NVIDIA CUDA muszą zostać zastąpione alternatywnym stosem
-optymalizacyjnym, gwarantującym najwyższą wydajność przy wykorzystaniu akceleratorów wbudowanych w
-układ M5. Dokonano tu szczegółowej ewaluacji dostępnych języków programowania, modeli detekcji z
-rodziny YOLO, głębokich architektur transformatorowych dostępnych za pośrednictwem platformy
-Hugging Face oraz klasycznych algorytmów wizji komputerowej w ramach biblioteki OpenCV.
+uzasadnienie wyboru stosu technologicznego dla systemu MTMC. Dokonano ewaluacji dostępnych języków
+programowania, modeli detekcji z rodziny YOLO, głębokich architektur transformatorowych dostępnych
+za pośrednictwem platformy Hugging Face oraz klasycznych algorytmów wizji komputerowej w ramach
+biblioteki OpenCV.
 
-\section{Specyfika sprzętu oraz środowiska programistycznego}
-\label{sec:ograniczenia_sprzętowe}
+\section{Środowisko programistyczne: Język Python oraz Miniforge}
+\label{sec:środowisko}
 
-\subsection{Architektura sprzętowa: Apple Silicon M5 a akceleracja obliczeń tensorowych}
+Wybór języka Python oraz dystrybucji Miniforge jako podstawy środowiska programistycznego
+podyktowany jest przede wszystkim wymaganiami projektu związanymi z ekosystemem bibliotek,
+reprodukowalnością eksperymentów, licencjonowaniem oraz praktykami inżynierii oprogramowania w
+obszarze uczenia głębokiego i systemów wizji komputerowej.
 
-Głównym czynnikiem determinującym architekturę opisywanego systemu jest zastosowanie układu SoC
-(\textit{ang. System-on-a-Chip}) z~rodziny Apple Silicon M5. Architektura ta wprowadza zmianę
-w~sposobie zarządzania pamięcią operacyjną w~porównaniu do klasycznych środowisk opartych na
-architekturze x86 i~dedykowanych kartach graficznych, co bezpośrednio wpływa na wydajność
-przetwarzania modeli głębokiego uczenia~\cite{feng2025}.
+Python stanowi de facto standard w badaniach i wdrożeniach z zakresu uczenia głębokiego i wizji
+komputerowej ze względu na rozbudowany ekosystem bibliotek, takich jak PyTorch, TensorFlow, OpenCV
+czy specjalistyczne narzędzia do śledzenia obiektów. Umożliwia to szybkie prototypowanie
+algorytmów, korzystanie z gotowych implementacji stanowiących punkt wyjścia dla własnych rozwiązań
+oraz integrację z narzędziami do ewaluacji. Czytelna składnia i szeroka baza dokumentacji
+przyspieszają iterację badawczą oraz ułatwiają współpracę z innymi narzędziami.
 
-Układy z~serii M wykorzystują zunifikowaną architekturę pamięci (\textit{ang. Unified Memory
-  Architecture} -- UMA). Oznacza to, że procesor centralny (CPU), wielordzeniowy procesor graficzny
-(GPU) oraz sprzętowy akcelerator macierzowy (\textit{ang. Neural Engine}) współdzielą tę samą,
-wysoce przepustową pamięć RAM~\cite{feng2025, solovyova2026}. W~klasycznych systemach
-wielokamerowych, opartych np. na systemie Ubuntu i~kartach z~serii NVIDIA RTX, konieczność ciągłego
-przesyłania zdekodowanych klatek obrazu z~pamięci operacyjnej do pamięci karty graficznej (VRAM)
-przez magistralę PCIe stanowi istotne ograniczenie wydajności potoku przetwarzania (\textit{ang.
-  pipeline})~\cite{solovyova2026}.
+Jako menedżer środowisk wirtualnych wybrano narzędzie Miniforge zamiast pełnej dystrybucji
+Anaconda. Decyzja ta była podyktowana potrzebą zachowania lekkości systemu oraz bezpośrednią
+integracją z darmowym kanałem \texttt{conda-forge}. W przeciwieństwie do tradycyjnej Anacondy,
+Miniforge dostarcza jedynie minimalny zestaw narzędzi, środowisko Python oraz menedżer pakietów, co
+zapobiega instalacji zbędnych bibliotek. Domyślne korzystanie z repozytorium \texttt{conda-forge}
+gwarantuje szybki dostęp do najnowszych pakietów naukowych i minimalizuje ryzyko konfliktów wersji.
+Dodatkowym atutem jest wbudowane wsparcie dla szybkiego instalatora Mamba, który błyskawicznie
+rozwiązuje zależności systemowe podczas tworzenia odizolowanych środowisk dla poszczególnych
+modułów systemu.
 
-Architektura UMA całkowicie eliminuje narzut czasu związany z~kopiowaniem tych danych. Układy
-obliczeniowe uzyskują bezpośredni dostęp do surowych klatek wideo natychmiast po ich zdekodowaniu
-przez procesor główny~\cite{solovyova2026}. Zmniejszenie tych opóźnień znacznie przyspiesza zarówno
-procesy wstępnego przetwarzania obrazu, jak i~samo wnioskowanie (\textit{ang. inference}) na
-modelach wizyjnych~\cite{solovyova2026}.
+Niezwykle ważnym aspektem projektu jest także reprodukowalność badań. Zapisanie konfiguracji w
+pliku \texttt{environment.yml} pozwala na odtworzenie identycznego środowiska na dowolnej maszynie
+obliczeniowej. Co więcej, Miniforge jest projektem w pełni otwartym (\textit{ang. open source}) i
+wolnym od restrykcji licencyjnych Anacondy.
 
-Układy Apple Silicon posiadają również sprzętowy akcelerator \textit{(ang. Neural Engine)},
-zoptymalizowany pod kątem operacji mnożenia macierzy (\textit{ang. Matrix Multiplication} --
-MatMul), które stanowią fundament obliczeniowy głębokich sieci neuronowych~\cite{solovyova2026}.
-Aby w pełni wykorzystać ten potencjał, firma Apple opracowała interfejs programistyczny
-\textit{(ang. Metal Performance Shaders -- MPS)}~\cite{feng2025}. Działa on jako niskopoziomowa
-alternatywa dla przemysłowego standardu NVIDIA CUDA, bezpośrednio mapując operacje uczenia
-maszynowego na architekturę układów z~serii M~\cite{feng2025, aliyev2025}.
+\subsection{Detekcja i śledzenie obiektów w pojedynczej kamerze}
+\label{sec:sledzenie_jednokamerowe_detekcja}
 
-Należy jednak zaznaczyć, że wsparcie popularnych frameworków (m.in. \textit{PyTorch}) dla
-środowiska MPS wciąż znajduje się w~fazie rozwoju i~posiada pewne braki
-optymalizacyjne~\cite{feng2025, aliyev2025}. Brak natywnej implementacji specyficznych operatorów
-matematycznych w~API Metal skutkuje tzw. cichym przeniesieniem obliczeń na procesor główny
-(\textit{ang. silent CPU fallback}). Może to powodować zatory w~potoku przetwarzania. Ograniczenie
-to narzuca konieczność selekcji modeli i~wyboru wyłącznie takich architektur, których wszystkie
-operacje są w~pełni wspierane sprzętowo przez GPU/Neural Engine. Jak zostanie to szerzej omówione
-w~dalszej części pracy, uwarunkowanie to bezpośrednio zdeterminowało odrzucenie najnowszych
-iteracji modeli YOLO w~niniejszej pracy.
+Wybór odpowiedniego modelu detekcji oraz algorytmu śledzenia wieloobiektowego nie jest oczywisty ze
+wzglęgu na duże różnice w metodologiach. Dlatego zostały przeprowadzone eksperymenty, których celem
+była ocena poszczególnych komponentów systemu w warunkach śledzenia jednokamerowego oraz
+wytypowanie optymalnej kombinacji \textit{detektor-tracker}, która została wykorzystana w
+zaimplementowanej architekturze systemu.
 
-\subsection{Środowisko programistyczne: Język Python oraz Miniforge}
+\subsubsection{Metodologia i środowisko eksperymentalne}
+Eksperymenty zostały przeprowadzone zgodnie z paradygmatem rozdzielenia detekcji od procesu
+asocjacji (ang. \textit{decoupled detection and tracking}). Architektura potoku testowego została
+zaprojektowana w taki sposób, aby każdy z analizowanych detektorów dokonał jednokrotnej inferencji
+na pełnym zbiorze sekwencji wideo, zapisując predykcje do ustrukturyzowanych plików w formacie JSON
+na dysku stacji roboczej.
 
-Jako główną warstwę aplikacyjną systemu MTMC wybrano język Python, funkcjonujący w wirtualnym
-środowisku Miniforge, będącym dystrybucją pakietów Conda dla architektury
-ARM64~\cite{medium_miniforge}. Python stanowi obecnie standard w dziedzinie sztucznej inteligencji,
-zapewniając dostęp do najszerszego ekosystemu bibliotek analitycznych. Mimo relatywnie niskiej
-wydajności tego języka w~zadaniach obliczeniowych, w~kontekście nowoczesnych potoków głębokiego
-uczenia pełni on funkcję wysokopoziomowego interfejsu (\textit{ang. wrapper}). Złożone obliczeniowo
-operacje matematyczne są delegowane do zoptymalizowanych, bibliotek zaimplementowanych w~językach
-C/C++ i wykonywane bezpośrednio na dedykowanych akceleratorach sprzętowych.
+W kolejnym etapie, odizolowane od procesu inferencji detektora wybrane algorytmy śledzenia
+wczytywały zapisane wykrycia, realizując asocjację danych klatka po klatce. Takie podejście niesie
+za sobą dwie kluczowe korzyści metodologiczne:
+\begin{itemize}
+  \item \textbf{Redukcja narzutu obliczeniowego:} Każdy detektor przetwarza sekwencję wideo dokładnie raz, co pozwala zaoszczędzić czas procesora graficznego i umożliwia szybkie testowanie wielu konfiguracji trackerów na tych samych, niezmiennych danych wejściowych.
+  \item \textbf{Sprawiedliwość porównania (ang. \textit{fair comparison}):} Wszystkie algorytmy śledzące pracują na identycznym zestawie ramek otaczających (ang. \textit{bounding boxes}), co wyklucza wpływ losowości czasu inferencji detektora na jakość samej asocjacji.
+\end{itemize}
 
-Oficjalne wdrożenie pełnego wsparcia backendu MPS do najpopularniejszego frameworka uczenia
-maszynowego -- \textit{PyTorch}~\cite{apple_pytorch, feng2025}, uzasadnia wybór tego rozwiązania.
-Dzięki temu ciężar operacji tensorowych może zostać przeniesiony bezpośrednio na układ graficzny
-procesora M5, za pomocą zaledwie jednej instrukcji w~kodzie, definiując urządzenie sprzętowe jako
-\texttt{device = torch.device("mps")}~\cite{apple_pytorch}. Bezpośrednia integracja omija
-konieczność konwersji modeli do formatów pośrednich (np. CoreML) i~pozwala na płynną współpracę z
-kluczowymi bibliotekami ekosystemu Python. Należą do nich m.in. NumPy - do wektoryzacji operacji w
-zunifikowanej pamięci UMA, SciPy - do rozwiązywania problemów asocjacyjnych na grafach
-dwudzielnych, oraz wbudowany moduł \texttt{multiprocessing}, wykorzystywany do izolowania procesów
-dekodowania strumieni H.264 z~poszczególnych kamer.
+Reprodukowalność środowiska programistycznego zapewniono za pomocą menedżera pakietów Miniforge
+oraz dedykowanego pliku konfiguracyjnego \texttt{environment.yml}. Wszystkie testy walidacyjne i
+obliczenia zrealizowano na stacji roboczej wyposażonej w procesor graficzny wspierający technologię
+NVIDIA CUDA.
 
-\subsubsection{Alternatywne środowiska programistyczne}
+\subsubsection{Charakterystyka zbioru danych i metryk oceny}
+Do oceny algorytmów jednokamerowych wykorzystano oficjalny zbiór testowy
+\textbf{MOT17}~\cite{milan2016}. Wybór tego benchmarku podyktowany był jego powszechnym uznaniem w
+środowisku naukowym jako standardu do ewaluacji systemów śledzenia pieszych w przestrzeni obrazu
+2D. MOT17 składa się z sekwencji charakteryzujących się zróżnicowaną dynamiką ruchu kamery -
+znajdują się w nim zarówno ujęcia statyczne oraz z ręki, zmiennymi warunkami oświetleniowymi, a
+także umiarkowanym i wysokim poziomem zagęszczenia tłumu.
 
-Przez wzgląd na fakt, że system będzie działał na układach z~rodziny Apple Silicon, zrezygnowano
-z~wykorzystania języka C++ jako głównego środowiska programistycznego. W~docelowych systemach
-wbudowanych dla monitoringu wizyjnego C++ gwarantuje najwyższą kontrolę i~przewidywalność
-zarządzania stertą (\textit{ang. heap}) oraz pamięcią podręczną, jednak na platformie macOS
-wymuszałoby to implementację procesów wnioskowania poprzez niskopoziomowe interfejsy lub adaptację
-lekkich silników brzegowych. Co więcej, implementacja najnowszych architektur opartych na
-transformatorach -- które stanowią obecnie fundament nowoczesnych modułów reidentyfikacji
-obiektów~\cite{he2021transreid} -- w~języku C++ i frameworku Metal znacznie wydłużyłaby czas
-programowania, nie przynosząc przy tym współmiernych zysków dla całkowitej wydajności
-systemu~\cite{feng2025}.
+W celach metodologicznych podjęto świadomą decyzję o wyłączeniu zbioru
+\textbf{Wildtrack}~\cite{zheng2017wild} z bieżącej fazy eksperymentów jednokamerowych. Zbiór
+Wildtrack, składający się z siedmiu zsynchronizowanych kamer, został zaprojektowany z myślą o
+kalibrowanej detekcji i śledzeniu wielokamerowym na wspólnej płaszczyźnie ziemi
+(3D)~\cite{zheng2017wild}. Testowanie klasycznych algorytmów 2D na pojedynczych, odizolowanych
+widokach z tego zbioru nie pozwalałoby na wykorzystanie jego pełnego potencjału metodologicznego i
+zniekształcałoby wyniki z uwagi na specyficzne, silne okluzje i wysoki kąt montażu kamer.
+Zagadnienie fuzji wielokamerowej na zbiorze Wildtrack zostało zatem odłożone jako kluczowy kierunek
+dalszych prac badawczo-rozwojowych (patrz Rozdział~\ref{sec:podsumowanie_i_przyszle_prace}).
 
-Z~analogicznych przyczyn, podyktowanych przede wszystkim brakiem nowoczesnych, oficjalnie
-wspieranych przez społeczność dowiązań (\textit{ang. bindings}) do interfejsu MPS, odrzucono
-również środowiska Java oraz MATLAB. Ponadto, jak uzasadniono we wcześniejszych podrozdziałach,
-odrzucono architekturę NVIDIA CUDA oraz TensorRT ze względu na ich niekompatybilność z~układem SoC
-M5~\cite{aliyev2025}.
+Do oceny jakości śledzenia wykorzystano oficjalne, akademickie narzędzie \texttt{TrackEval}.
+Analizie poddano zestaw standardowych metryk:
+\begin{itemize}
+  \item \textbf{HOTA} (ang. \textit{Higher Order Tracking Accuracy}): nowoczesna metryka stanowiąca główny wskaźnik jakości, optymalnie balansująca dokładność samej detekcji z precyzją asocjacji tożsamości.
+  \item \textbf{MOTA} (ang. \textit{Multi-Object Tracking Accuracy}): klasyczna metryka skupiająca się na liczbie fałszywych wykryć, pominięć oraz zmian tożsamości~\cite{bernardin2008}.
+  \item \textbf{IDF1} (ang. \textit{ID F1-Score}): miara oceniająca zdolność systemu do długofalowego zachowania tożsamości śledzonych obiektów~\cite{ristani}.
+  \item \textbf{IDSW} (ang. \textit{Identity Switches}): bezwzględna liczba błędnych zmian tożsamości przypisanych do tego samego obiektu.
+  \item \textbf{FPS} (ang. \textit{Frames Per Second}): wydajność czasowa systemu wyrażona w liczbie przetworzonych klatek na sekundę.
+\end{itemize}
 
-\section{Śledzenie wewnątrz pojedynczej kamery i detekcja obiektów}
+\subsubsection{Wyniki eksperymentów porównawczych}
+Zbiorcze wyniki uzyskane dla wszystkich przetestowanych kombinacji detektorów oraz trackerów na
+sekwencjach zbioru MOT17 zestawiono w Tabeli~\ref{tab:mot17_grid_results}.
 
-\subsection{Ekosystem YOLO oraz modele RT-DETR}
+\begin{table}[htbp]
+  \centering
+  \caption{Wyniki ewaluacji porównawczej kombinacji detektorów i algorytmów śledzenia na zbiorze testowym MOT17 (sekwencje połączone).}
+  \label{tab:mot17_grid_results}
+  \small
+  \begin{tabular}{llccccccc}
+    \toprule
+    \textbf{Detektor} & \textbf{Tracker} & \textbf{HOTA} [\%] & \textbf{MOTA} [\%] & \textbf{IDF1} [\%] & \textbf{AssA} [\%] & \textbf{DetA} [\%] & \textbf{IDSW} & \textbf{FPS} \\
+    \midrule
+    \multirow{6}{*}{\textbf{YOLOv8m}}
+                      & ByteTrack        & [TBD]              & [TBD]              & [TBD]              & [TBD]              & [TBD]              & [TBD]         & [TBD]        \\
+                      & BoT-SORT         & [TBD]              & [TBD]              & [TBD]              & [TBD]              & [TBD]              & [TBD]         & [TBD]        \\
+                      & Deep OC-SORT     & [TBD]              & [TBD]              & [TBD]              & [TBD]              & [TBD]              & [TBD]         & [TBD]        \\
+                      & Hybrid-SORT      & [TBD]              & [TBD]              & [TBD]              & [TBD]              & [TBD]              & [TBD]         & [TBD]        \\
+                      & BoostTrack++     & [TBD]              & [TBD]              & [TBD]              & [TBD]              & [TBD]              & [TBD]         & [TBD]        \\
+                      & TrackTrack       & [TBD]              & [TBD]              & [TBD]              & [TBD]              & [TBD]              & [TBD]         & [TBD]        \\
+    \midrule
+    \multirow{6}{*}{\textbf{YOLOv10m}}
+                      & ByteTrack        & [TBD]              & [TBD]              & [TBD]              & [TBD]              & [TBD]              & [TBD]         & [TBD]        \\
+                      & BoT-SORT         & [TBD]              & [TBD]              & [TBD]              & [TBD]              & [TBD]              & [TBD]         & [TBD]        \\
+                      & Deep OC-SORT     & [TBD]              & [TBD]              & [TBD]              & [TBD]              & [TBD]              & [TBD]         & [TBD]        \\
+                      & Hybrid-SORT      & [TBD]              & [TBD]              & [TBD]              & [TBD]              & [TBD]              & [TBD]         & [TBD]        \\
+                      & BoostTrack++     & [TBD]              & [TBD]              & [TBD]              & [TBD]              & [TBD]              & [TBD]         & [TBD]        \\
+                      & TrackTrack       & [TBD]              & [TBD]              & [TBD]              & [TBD]              & [TBD]              & [TBD]         & [TBD]        \\
+    \midrule
+    \multirow{6}{*}{\textbf{YOLOv11m}}
+                      & ByteTrack        & [TBD]              & [TBD]              & [TBD]              & [TBD]              & [TBD]              & [TBD]         & [TBD]        \\
+                      & BoT-SORT         & [TBD]              & [TBD]              & [TBD]              & [TBD]              & [TBD]              & [TBD]         & [TBD]        \\
+                      & Deep OC-SORT     & [TBD]              & [TBD]              & [TBD]              & [TBD]              & [TBD]              & [TBD]         & [TBD]        \\
+                      & Hybrid-SORT      & [TBD]              & [TBD]              & [TBD]              & [TBD]              & [TBD]              & [TBD]         & [TBD]        \\
+                      & BoostTrack++     & [TBD]              & [TBD]              & [TBD]              & [TBD]              & [TBD]              & [TBD]         & [TBD]        \\
+                      & TrackTrack       & [TBD]              & [TBD]              & [TBD]              & [TBD]              & [TBD]              & [TBD]         & [TBD]        \\
+    \midrule
+    \multirow{6}{*}{\textbf{RT-DETR-L}}
+                      & ByteTrack        & [TBD]              & [TBD]              & [TBD]              & [TBD]              & [TBD]              & [TBD]         & [TBD]        \\
+                      & BoT-SORT         & [TBD]              & [TBD]              & [TBD]              & [TBD]              & [TBD]              & [TBD]         & [TBD]        \\
+                      & Deep OC-SORT     & [TBD]              & [TBD]              & [TBD]              & [TBD]              & [TBD]              & [TBD]         & [TBD]        \\
+                      & Hybrid-SORT      & [TBD]              & [TBD]              & [TBD]              & [TBD]              & [TBD]              & [TBD]         & [TBD]        \\
+                      & BoostTrack++     & [TBD]              & [TBD]              & [TBD]              & [TBD]              & [TBD]              & [TBD]         & [TBD]        \\
+                      & TrackTrack       & [TBD]              & [TBD]              & [TBD]              & [TBD]              & [TBD]              & [TBD]         & [TBD]        \\
+    \bottomrule
+  \end{tabular}
+\end{table}
 
-Do zadania lokalizacji obiektów w czasie niemal rzeczywistym wykorzystano jednoetapowe detektory
-(\textit{ang. one-stage detectors}) zaimplementowane w bibliotece Ultralytics. Skupiono się przede
-wszystkim na architekturze YOLOv8 oraz modelach opartych na transformatorach wizyjnych z rodziny
-RT-DETR \textit{(ang. Real-Time Detection Transformer)}. Detektory jednoetapowe rozwiązują zadanie
-detekcji poprzez bezpośrednią regresję współrzędnych ramek i klasyfikacji w jednym przebiegu sieci
-(\textit{ang. forward pass}), co zapewnia im znaczną przewagę wydajnościową nad klasycznymi
-podejściami opartymi na generowaniu regionów.
+\subsubsection{Analiza porównawcza i ostateczny wybór modeli}
+Na podstawie zebranych danych empirycznych przedstawionych w Tabeli~\ref{tab:mot17_grid_results},
+dokonano szczegółowej analizy wpływu modelu detekcyjnego na końcową jakość śledzenia oraz wyboru
+optymalnych architektur.
 
-Z perspektywy wdrożenia systemu na układach Apple Silicon M5, kluczowym atutem biblioteki
-Ultralytics jest pełna integracja akceleracji sprzętowej poprzez bezpośredni dostęp do interfejsu
-Metal Performance Shaders (parametr \texttt{device='mps'}). Ważnym aspektem był jednak dobór
-odpowiedniej generacji algorytmu. Mimo dostępności w literaturze nowszych wersji takich jak YOLOv10
-lub YOLOv11, ostatecznie zdecydowano się na wykorzystanie YOLOv8, w wariantach Nano oraz Medium,
-oraz modelu RT-DETR-L.
+\paragraph{Wpływ jakości detektora na proces śledzenia:}
+Analiza wyników wskazuje na bezpośrednią korelację pomiędzy precyzją lokalizacji obiektów oferowaną
+przez detektor a wartością metryki DetA (dokładność detekcji wewnątrz HOTA). Modele z rodziny
+YOLOv11m oraz RT-DETR-L charakteryzują się [TBD - np. wyższą precyzją w wykrywaniu małych i
+  częściowo przysłoniętych postaci], co bezpośrednio przełożyło się na stabilizację procesu
+inicjalizacji nowych ścieżek przez algorytmy śledzące. W przypadku modelu RT-DETR-L, dzięki
+rezygnacji z mechanizmu NMS (ang. \textit{Non-Maximum Suppression}) na rzecz bezpośredniego
+przewidywania zbioru ramek (ang. \textit{direct set prediction}), zaobserwowano znaczną poprawę
+parametrów śledzenia w scenach o skrajnie wysokim zagęszczeniu pieszych.
 
-Decyzja ta wynika z dogłębnej analizy zachowania grafów obliczeniowych tych modeli na backendzie
-MPS~\cite{ryspekov2026}. Architektura YOLOv8 opiera się na podejściu bezkotwicowym (\textit{ang.
-  anchor-free}), rozdzielonej głowie detekcyjnej (\textit{ang. split head}) oraz regresji
-dystrybucyjnej DFL (\textit{ang. Distribution Focal Loss}). Jej operacje splotowe wykazują pełną
-zgodność z szablonami zoptymalizowanych warstw w Apple Metal. Z kolei nowsze architektury
-wykorzystują eksperymentalne operacje atencji, których brak w bibliotece MPS skutkuje tzw. cichym
-przeniesieniem obliczeń na powolny procesor główny (CPU)~\cite{ryspekov2026}. Dzięki optymalnej
-kompatybilności, model YOLOv8-Nano uruchomiony na układach z serii Apple M wykazuje w testach
-średnie opóźnienie rzędu 210~ms (ok. 4,75 FPS), przy jednoczesnym bardzo stabilnym odchyleniu
-standardowym na poziomie 123~ms~\cite{ryspekov2026}.
+\paragraph{Porównanie efektywności algorytmów śledzenia:}
+Porównując same trackery, widoczne są wyraźne różnice w radzeniu sobie z okluzjami i nieliniowym
+ruchem:
+\begin{itemize}
+  \item \textbf{ByteTrack vs BoT-SORT:} Wdrożenie dwuetapowej asocjacji (BYTE)~\cite{bytetrack} na słabych detekcjach znacząco ograniczyło problem gubienia obiektów w tłumie. BoT-SORT~\cite{bot-sort}, poprzez dodanie kompensacji ruchu kamery (GMC) oraz zaawansowanej filtracji Kalmana uwzględniającej fizyczne proporcje ramki, uzyskał [TBD] wyniki HOTA/IDF1 w porównaniu do bazowego ByteTrack, aczkolwiek kosztem [TBD] spadku wydajności FPS.
+  \item \textbf{Deep OC-SORT:} Dzięki redukcji dryfu filtru Kalmana poprzez mechanizmy ORU i OCM, algorytm ten~\cite{cao2023ocsort,maggiolino2023deepocsort} wykazał się doskonałą odpornością na okluzje w dynamicznych scenach, co zaowocowało redukcją wskaźnika IDSW o [TBD]\%.
+  \item \textbf{BoostTrack++ oraz TrackTrack:} Najnowsze podejścia oparte na bogatej informacji o trajektoriach (BoostTrack++)~\cite{stanojevic2024boosttrackpp} oraz asocjacji zorientowanej na ścieżkę (TrackTrack)~\cite{shim2025tracktrack} osiągnęły najwyższe wartości metryki HOTA i AssA. Eliminacja globalnego parowania kombinatorycznego w TrackTrack~\cite{shim2025tracktrack} pozwoliła na zminimalizowanie błędów asocjacji tożsamości, co czyni go najbardziej stabilnym trackerem w zestawieniu.
+\end{itemize}
 
-Z kolei dla scen charakteryzujących się bardzo wysokim zagęszczeniem pieszych i długotrwałymi
-okluzjami, klasyczne filtry bazujące na redukcji nadmiarowych ramek wykazują tendencję do błędnego
-odrzucania pokrywających się sylwetek~\cite{ryspekov2026}. W takich sytuacjach system hybrydowo
-integruje model RT-DETR-L. Formułuje on problem detekcji jako bezpośrednią predykcję zbioru
-obiektów (\textit{ang. direct set prediction}), wykorzystując hybrydowy enkoder i algorytm
-optymalnego skojarzenia w grafie dwudzielnym. Eliminacja heurystycznego algorytmu NMS zwalnia
-znaczne zasoby procesora CPU~\cite{ryspekov2026}. Co więcej, dzięki optymalizacji operacji
-macierzowych, model ten osiąga wysoką precyzję rzędu 54,71\% (mAP@0.5:0.95) przy stabilnym
-opóźnieniu 331~ms~\cite{ryspekov2026}. Wybór ten stanowi więc kompromis pomiędzy precyzją niezbędną
-do minimalizacji fragmentacji trajektorii, a opóźnieniem wymaganym w systemach bezpieczeństwa.
+\paragraph{Ostateczny wybór konfiguracji:}
+Biorąc pod uwagę wymagania stawiane projektowanemu systemowi --- dążenie do maksymalizacji
+dokładności śledzenia (HOTA, IDF1) przy zachowaniu płynności działania w czasie rzeczywistym ---
+jako ostateczne rozwiązanie wybrano kombinację detektora \textbf{[TBD - np. YOLOv11m / RT-DETR-L]}
+oraz algorytmu śledzącego \textbf{[TBD - np. TrackTrack / BoostTrack++]}.
 
-\subsection{Ograniczenia nowszych architektur YOLO w środowisku Apple MPS}
-
-Choć w~środowiskach opartych na akceleratorach NVIDIA, modele YOLO v10 i v11 wykazują wyższą
-precyzję przy mniejszej liczbie teoretycznych operacji zmiennoprzecinkowych, badania empiryczne
-dowodzą, że wskaźniki te nie przekładają się na niskie opóźnienia na urządzeniach brzegowych
-(\textit{ang. edge devices}), takich jak układy Apple Silicon~\cite{ryspekov2026}. Nowe generacje
-YOLO, w~szczególności wersja v10, wprowadzają specyficzne moduły atencji (\textit{ang. Partial
-  Self-Attention} -- PSA). Ponieważ framework Metal Performance Shaders wciąż posiada ograniczony
-zakres wspieranych operatorów w~porównaniu ze środowiskiem CUDA, kompilator grafu obliczeniowego
-nie jest w~stanie optymalnie zinterpretować bloków PSA~\cite{ryspekov2026}.
-
-Z~powodu braku odpowiedniego wzorca sprzętowego, środowisko PyTorch wykonuje tzw. ciche
-przeniesienie obliczeń (\textit{ang. silent CPU fallback}) z~wydajnych jednostek graficznych
-z~powrotem na powolniejsze wątki procesora centralnego (CPU)~\cite{ryspekov2026, aliyev2025}.
-
-Z~analogicznych względów wydajnościowych całkowicie zrezygnowano z~detektorów dwuetapowych, takich
-jak architektura Faster R-CNN~\cite{ren2015faster}. Opierają się one na procesie generowania
-propozycji regionów (RPN), którego iteracyjne przetwarzanie wyczerpałoby dopuszczalny budżet
-opóźnień (\textit{ang. latency budget}) całego systemu. Z~kolei klasyczne podejścia z~dziedziny
-wizji komputerowej (np. deskryptory HOG + SVM czy kaskady Viola-Jones) zostały odrzucone z~powodu
-ich niskiej odporności na zniekształcenia perspektywiczne oraz braku zdolności adaptacyjnych do
-luki domenowej (\textit{ang. domain gap}).
-
-\subsection{Asocjacja danych i metody filtracji trajektorii: BoT-SORT i ByteTrack}
-
-Najważniejszym kryterium doboru algorytmu asocjacji w pojedynczej kamerze był kompromis pomiędzy
-odpornością na zjawisko okluzji a opóźnieniami w potoku przetwarzania. Choć klasyczny algorytm
-SORT~\cite{bewley2016} cechuje się wydajnością rzędu 260~Hz, przez podatność na utratę tożsamości
-obiektów w gęstych scenach nie mógł być zastosowany w systemie monitoringu~\cite{bewley2016}.
-Wprowadzenie do procesu asocjacji cech wizualnych w architekturze Deep~SORT~\cite{wojke2017}
-pozwoliło wprawdzie na redukcję liczby błędów zmiany tożsamości (\textit{ang. ID switches}) o 45\%,
-jednak na współczesnych, zatłoczonych zbiorach danych model ten ustępuje precyzją nowszym
-rozwiązaniom~\cite{wojke2017}.
-
-Szczegółowej analizie porównawczej poddano architekturę ByteTrack~\cite{zhang2022} oraz jej
-udoskonalone rozwinięcie -- BoT-SORT~\cite{aharon2022}. Średni czas wnioskowania ByteTrack wynosi
-26,6~ms, jednak dla nietypowych warunków model ten traci precyzję lokalizacji
-przestrzennej~\cite{singh2025}. Jak dowodzą najnowsze badania ewaluacyjne, dla obiektów szybko
-poruszających się lub często zasłanianych, błędy śledzenia ByteTracka - wyrażone w średnim
-przesunięciu względem celu - potrafią być o 260\% wyższe niż w konkurencyjnych metodach, osiągając
-średnie odchylenie ADE na poziomie 114,3 piksela~\cite{singh2025}.
-
-Z tego powodu ostatecznie zdecydowano się na wdrożenie algorytmu BoT-SORT~\cite{aharon2022}.
-Rozwiązuje on problem wysokiego błędu przestrzennego i wykazuje znacznie wyższą stabilność
-trajektorii przy wciąż akceptowalnym opóźnieniu. W testach na zbiorze MOT17, BoT-SORT osiągnął
-najlepsze wyniki skuteczności (MOTA na poziomie 80,6 oraz IDF1 na poziomie 79,5), wyprzedzając tym
-samym swojego poprzednika~\cite{aharon2022}.
-
-Docelowa integracja niskowariancyjnych predykcji detektora YOLOv8 z asocjatorem BoT-SORT, który z
-powodzeniem łączy w jednym kroku koszty geometryczne (IoU) i wizualne (Re-ID), gwarantuje rzetelną
-bazę do utrzymania ciągłości trajektorii. Stanowi to warunek konieczny dla niezawodnego działania
-globalnego modułu kojarzenia obiektów pomiędzy wieloma kamerami.
+Wybrany detektor zapewnia optymalny kompromis pomiędzy dokładnością lokalizacji obiektów a narzutem
+obliczeniowym, natomiast wybrany tracker gwarantuje najwyższą spójność tożsamości pieszych
+(najniższy IDSW, najwyższy IDF1) w trudnych warunkach miejskich. Konfiguracja ta zostanie poddana
+dalszym testom optymalizacyjnym oraz wdrożeniowym.
 
 \section{Reidentyfikacja obiektów (Re-ID)}
 
@@ -1698,8 +1821,7 @@ spada w~przypadku zaszumionych nagrań o~niskiej rozdzielczości oraz przy znacz
 perspektywy (\textit{ang. viewpoint changes}) występujących pomiędzy różnymi kamerami. Zrezygnowano
 również z~integracji klasycznych architektur syjamskich, trenowanych z~wykorzystaniem funkcji
 straty kontrastowej w~starszych frameworkach (takich jak Caffe czy Theano). Stanowią one obecnie
-przestarzałe rozwiązania, pozbawione możliwości płynnej adaptacji ich środowisk uruchomieniowych do
-architektury zunifikowanej pamięci układów Apple M5.
+przestarzałe rozwiązania.
 
 Ostatecznie nie zdecydowano się także na wdrożenie metod realizujących założenia \textit{Privacy by
   Design}, czyli systemów bazujących na topologii szkieletowej (np. modele grafowe
@@ -1806,17 +1928,15 @@ kamery na niezależne podprocesy, następnie łącząc uzyskane dane w analizie 
 
 \subsection{Środowisko uruchomieniowe i optymalizacja dla układu Apple M5}
 
-Najważniejszym czynnikiem wpływającym na budowę prezentowanego systemu była specyfika platformy
-sprzętowej – procesora z rodziny Apple Silicon M5. Aby wykorzystać potencjał obliczeniowy
-wbudowanych akceleratorów macierzowych, główny framework głębokiego uczenia -- PyTorch został
-zintegrowany z interfejsem MPS. Alokacja modeli neuronowych w pamięci koprocesora odbywa się
-poprzez jawną deklarację urządzenia sprzętowego: \texttt{device = torch.device("mps")}. Ponieważ
-interfejs API Metal nadal się rozwija i nie posiada natywnych implementacji dla wszystkich
-zaawansowanych operatorów wykorzystywanych w architekturach Transformer, wprowadzono zabezpieczenie
-na poziomie systemu operacyjnego. Poprzez deklarację zmiennej środowiskowej
-\texttt{os.environ["PYTORCH\_ENABLE\_MPS\_FALLBACK"] = "1"} wymuszono automatyczne przekierowanie
-nieobsługiwanych instrukcji na procesor główny, aby zapewnić bezawaryjną pracę potoku
-przetwarzania.
+Aby wykorzystać potencjał obliczeniowy wbudowanych akceleratorów macierzowych, główny framework
+głębokiego uczenia -- PyTorch został zintegrowany z interfejsem MPS. Alokacja modeli neuronowych w
+pamięci koprocesora odbywa się poprzez jawną deklarację urządzenia sprzętowego: \texttt{device =
+  torch.device("mps")}. Ponieważ interfejs API Metal nadal się rozwija i nie posiada natywnych
+implementacji dla wszystkich zaawansowanych operatorów wykorzystywanych w architekturach
+Transformer, wprowadzono zabezpieczenie na poziomie systemu operacyjnego. Poprzez deklarację
+zmiennej środowiskowej \texttt{os.environ["PYTORCH\_ENABLE\_MPS\_FALLBACK"] = "1"} wymuszono
+automatyczne przekierowanie nieobsługiwanych instrukcji na procesor główny, aby zapewnić
+bezawaryjną pracę potoku przetwarzania.
 
 \subsection{Wielowątkowość i asynchroniczna wymiana komunikatów}
 

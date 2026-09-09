@@ -3,7 +3,7 @@ from scipy.spatial.distance import cosine
 from scipy.optimize import linear_sum_assignment
 
 class GlobalTracker:
-    def __init__(self, max_visual_cost=0.4, max_spatial_dist=100.0):
+    def __init__(self, max_visual_cost=0.4, max_spatial_dist=100.0, max_missed_frames=300):
         # Baza danych globalnych tożsamości
         # Format: { global_id: {"reid_vector": [...], "last_bev": (x, y), "missed_frames": 0} }
         self.global_tracks = {}
@@ -12,6 +12,7 @@ class GlobalTracker:
         # Progi odcięcia (powyżej nich algorytm uzna, że to dwie różne osoby)
         self.max_visual_cost = max_visual_cost
         self.max_spatial_dist = max_spatial_dist
+        self.max_missed_frames = max_missed_frames
 
     def update(self, current_detections):
         """
@@ -80,8 +81,8 @@ class GlobalTracker:
             if global_id not in [res["global_id"] for res in matched_results]:
                 self.global_tracks[global_id]["missed_frames"] += 1
                 
-            # Jeśli obiektu nie ma przez 300 klatek, usuwamy z RAM
-            if self.global_tracks.get(global_id, {}).get("missed_frames", 0) > 300:
+            # Jeśli obiektu nie ma przez max_missed_frames klatek, usuwamy z RAM
+            if self.global_tracks.get(global_id, {}).get("missed_frames", 0) > self.max_missed_frames:
                 del self.global_tracks[global_id]
 
         return matched_results

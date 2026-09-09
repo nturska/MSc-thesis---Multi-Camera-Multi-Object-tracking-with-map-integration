@@ -6,37 +6,37 @@ from PIL import Image
 from transformers import ViTImageProcessor, ViTModel
 
 class ReIDExtractor:
-    def __init__(self):
+    def __init__(self, model_name="google/vit-base-patch16-224-in21k", min_crop_size=10):
         # 1. Zabezpieczenie procesu ekstrakcji cech przed błędami MPS
         os.environ["PYTORCH_ENABLE_MPS_FALLBACK"] = "1"
         self.device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
+        self.min_crop_size = min_crop_size
         print(f"Inicjalizacja modułu Re-ID (Vision Transformer) na: {self.device}")
 
         # 2. Ładowanie modelu z ekosystemu Hugging Face
-        # Używamy bazowego modelu ViT. W docelowym wdrożeniu można go podmienić na 
+        # Używamy bazowego modelu ViT. W docelowym wdrożeniu można go podmienić na
         # wagi modelu dostrojonego do Re-ID (np. TransReID trenowanego z Batch-Hard Triplet Loss).
-        model_name = "google/vit-base-patch16-224-in21k"
         print(f"Pobieranie/Ładowanie modelu: {model_name} ...")
-        
+
         self.processor = ViTImageProcessor.from_pretrained(model_name)
         self.model = ViTModel.from_pretrained(model_name).to(self.device)
-        self.model.eval() # Tryb wnioskowania (bez aktualizacji wag)
+        self.model.eval()  # Tryb wnioskowania (bez aktualizacji wag)
 
     def extract_features(self, frame, box):
         """
         Pobiera klatkę z kamery oraz współrzędne ramki (z YOLO) i zwraca wektor cech.
         """
         x1, y1, x2, y2 = map(int, box)
-        
+
         # Zabezpieczenie przed wyjściem ramki poza kadr (np. gdy obiekt wchodzi w kadr)
         x1, y1 = max(0, x1), max(0, y1)
         x2, y2 = min(frame.shape[1], x2), min(frame.shape[0], y2)
-        
+
         # 1. Wycięcie sylwetki pieszego (kadr query)
         crop = frame[y1:y2, x1:x2]
-        
+
         # Jeśli ramka jest pusta (błąd detekcji), zwracamy None
-        if crop.size == 0 or crop.shape[0] < 10 or crop.shape[1] < 10:
+        if crop.size == 0 or crop.shape[0] < self.min_crop_size or crop.shape[1] < self.min_crop_size:
             return None
             
         # 2. Konwersja obrazu z formatu OpenCV (BGR) do formatu Hugging Face (RGB / PIL)

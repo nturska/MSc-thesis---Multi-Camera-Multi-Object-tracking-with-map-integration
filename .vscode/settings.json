@@ -17,6 +17,8 @@
     "%TMPFILE%",
     "-y=defaultIndent: '%INDENT%'"
   ],
+  "latex-workshop.latex.rootFile.doNotPrompt": true,
+  "latex-workshop.latex.autoBuild.cleanAndRetry.enabled": false,
   "latex-workshop.latex.recipe.default": "xelatex -> biber -> xelatex*2",
   "latex-workshop.latex.tools": [
     {

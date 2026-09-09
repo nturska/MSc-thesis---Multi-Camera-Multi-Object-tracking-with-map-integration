@@ -1,0 +1,120 @@
+detection:
+  model: yolov8m.pt
+  conf: 0.05
+  iou: 0.5
+  classes: [0]
+
+# Nazwa lokalnego trackera SCT (Ultralytics): ByteTrack | BoT-SORT | Deep_OC-SORT | TrackTrack
+sct_tracker:
+  name: BoT-SORT
+
+# Wspólne progi asocjacji (baza dla ByteTrack / BoT-SORT; inne trackery nadpisują poniżej)
+botsort:
+  track_high_thresh: 0.6
+  track_low_thresh: 0.1
+  new_track_thresh: 0.7
+  track_buffer: 30
+  match_thresh: 0.8
+  proximity_thresh: 0.5
+  appearance_thresh: 0.25
+  with_reid: true
+  gmc_method: sparseOptFlow
+  fuse_score: true
+
+# Opcjonalne nadpisania ByteTrack (puste = tylko baza botsort)
+bytetrack: {}
+
+# Klucze Ultralytics; aliasy paper→YAML też działają (det_thresh, alpha, lambda, tau_p, …)
+deepocsort:
+  track_high_thresh: 0.6   # alias: det_thresh
+  new_track_thresh: 0.6
+  track_buffer: 30
+  match_thresh: 0.8        # alias paper: iou_threshold (inna semantyka — tu próg Ultralytics)
+  delta_t: 3
+  alpha_fixed_emb: 0.95    # alias: alpha
+  inertia: 0.2             # alias: lambda
+  use_byte: true
+  with_reid: true
+  gmc_method: sparseOptFlow
+  # aw (adaptive weighting) — brak w Ultralytics, pomijane
+
+# Brak backendu w Ultralytics — grid oznaczy jako skipped (sekcje tylko dokumentacyjne)
+hybridsort:
+  det_thresh: 0.6
+  track_buffer: 30
+  iou_threshold: 0.3
+  delta_t: 3
+  hmiou_weight: 1
+
+boosttrackpp:
+  beta_high: 0.95
+  beta_low: 0.8
+  varying_frames: 20
+  track_buffer: 30
+
+tracktrack:
+  track_buffer: 60
+  penalty_p: 0.3           # alias: tau_p
+  penalty_q: 0.5           # alias: tau_q
+  with_reid: true
+  gmc_method: sparseOptFlow
+
+global_tracker:
+  max_visual_cost: 0.4
+  max_spatial_dist: 150.0
+  max_missed_frames: 300
+
+reid:
+  model_name: google/vit-base-patch16-224-in21k
+  min_crop_size: 10
+
+experiment:
+  dataset: mot17
+  tracker_name: MGR_Tracker
+  bev_size: [500, 500]
+  # Dla MOT17: konkretna sekwencja (null = pierwsza z listy sequences)
+  seq_name: MOT17-02-FRCNN
+  # true = uruchom wszystkie sekwencje z datasets.<dataset>.sequences
+  run_all_sequences: false
+
+datasets:
+  mot17:
+    split: train
+    root: data/MOT17
+    sequences:
+      - MOT17-02-FRCNN
+      - MOT17-04-FRCNN
+    # Single-camera (SCT→MCT pipeline na jednej sekwencji)
+    video_pattern: "data/MOT17/{split}/{seq_name}/img1/%06d.jpg"
+    homography_dir: data/calibration/mot17
+    source_type: opencv
+
+  wildtrack:
+    root: data/WILDTRACK
+    sequences:
+      - WILDTRACK
+    source_type: image_dir
+    homography_dir: data/calibration/wildtrack
+    # Zsynchronizowane podzbiory obrazów (C1–C7)
+    cameras:
+      - id: 1
+        name: C1
+        source: data/WILDTRACK/Image_subsets/C1
+      - id: 2
+        name: C2
+        source: data/WILDTRACK/Image_subsets/C2
+      - id: 3
+        name: C3
+        source: data/WILDTRACK/Image_subsets/C3
+      - id: 4
+        name: C4
+        source: data/WILDTRACK/Image_subsets/C4
+      - id: 5
+        name: C5
+        source: data/WILDTRACK/Image_subsets/C5
+      - id: 6
+        name: C6
+        source: data/WILDTRACK/Image_subsets/C6
+      - id: 7
+        name: C7
+        source: data/WILDTRACK/Image_subsets/C7
