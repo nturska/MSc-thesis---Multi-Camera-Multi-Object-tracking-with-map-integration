@@ -14,12 +14,12 @@ from pathlib import Path
 
 import cv2
 import numpy as np
-import torch
 import multiprocessing as mp
 from queue import Empty
 from ultralytics import YOLO, RTDETR
 
 from src.config import load_config, resolve_run, list_sequences
+from src.device import get_torch_device
 from src.reid_extractor import ReIDExtractor
 from src.global_tracker import GlobalTracker
 from trackers.adapter import SCTTrackerAdapter
@@ -108,9 +108,8 @@ def _boxes_to_numpy(result) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
 # 1. PROCES POJEDYNCZEJ KAMERY
 # ==========================================
 def camera_worker(camera_id, source, matrix_path, output_queue, worker_cfg, source_type="opencv", max_frames=None):
-    os.environ["PYTORCH_ENABLE_MPS_FALLBACK"] = "1"
-    device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
-
+    device = get_torch_device()
+    print(f"[Kamera {camera_id}] Urządzenie: {device}")
     detection_cfg = worker_cfg["detection"]
     reid_cfg = worker_cfg["reid"]
     experiment_config = worker_cfg["config"]

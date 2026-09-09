@@ -8,6 +8,7 @@ from ultralytics import YOLO
 # Umożliwia uruchomienie jako python src/tracker_bev.py z katalogu system/
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from src.config import load_config, write_botsort_yaml, resolve_run
+from src.device import get_torch_device
 
 
 def main(config_path=None):
@@ -38,7 +39,7 @@ def main(config_path=None):
 
     H = np.load(matrix_path)
 
-    device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
+    device = get_torch_device()
     print(f"Uruchamiam system na urządzeniu: {device}")
     print(f"Źródło: {video_path}")
 

@@ -9,3 +9,5 @@ lapx
 lap
 PyYAML
 filterpy>=1.4.5
+python-dotenv
+pycocotools

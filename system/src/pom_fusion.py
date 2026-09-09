@@ -2,15 +2,18 @@ import cv2
 import numpy as np
 import torch
 import os
+import sys
 from ultralytics import YOLO
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from src.device import get_torch_device
 
 def main():
     # Ścieżki
     video_path = "../system/data/videos/grzybowska.mp4"
     
     # 1. Inicjalizacja sprzętu i modelu YOLO (z BoT-SORT)
-    os.environ["PYTORCH_ENABLE_MPS_FALLBACK"] = "1"
-    device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
+    device = get_torch_device()
     model = YOLO("../system/models/yolov8m.pt")
     model.to(device)
 

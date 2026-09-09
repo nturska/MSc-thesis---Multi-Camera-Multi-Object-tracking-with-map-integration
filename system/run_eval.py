@@ -15,7 +15,8 @@ def run_evaluation(config_path=None, dataset=None, seq_name=None, tracker_name=N
 
     print("Inicjalizacja ewaluatora wizyjnego (TrackEval)...")
 
-    trackeval_script = os.path.join("TrackEval", "scripts", "run_mot_challenge.py")
+    # Wrapper z patch NumPy (np.float) — nie edytujemy sklonowanego TrackEval
+    trackeval_script = os.path.join(os.path.dirname(os.path.abspath(__file__)), "run_mot_challenge_compat.py")
     trackers_folder = "results"
 
     if dataset_name == "mot17":

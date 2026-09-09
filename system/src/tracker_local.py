@@ -6,6 +6,7 @@ from ultralytics import YOLO, RTDETR
 # Umożliwia uruchomienie jako python src/tracker_local.py z katalogu system/
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from src.config import load_config, write_botsort_yaml
+from src.device import get_torch_device
 
 os.environ["PYTORCH_ENABLE_MPS_FALLBACK"] = "1"
 
@@ -15,7 +16,7 @@ def process_single_camera(video_path, use_rtdetr=False, config_path=None):
     detection_cfg = config["detection"]
     tracker_yaml = write_botsort_yaml(config["botsort"])
 
-    device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
+    device = get_torch_device()
 
     if use_rtdetr:
         model = RTDETR("models/rtdetr-l.pt")

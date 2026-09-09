@@ -9,6 +9,13 @@ Uruchomienie (z katalogu system/, środowisko mtmc_env):
 
   python run_grid_experiments.py --dry-run
   python run_grid_experiments.py --models yolov8m.pt yolov26m.pt --trackers BoT-SORT ByteTrack
+
+Weryfikacja na serwerze NVIDIA CUDA:
+  python -c "import torch; print(torch.cuda.is_available(), torch.cuda.get_device_name(0) if torch.cuda.is_available() else None)"
+  # Oczekiwane w logu smoke: „Urządzenie: cuda” / „Re-ID … na: cuda”
+  # TrackEval przez run_mot_challenge_compat.py (patch np.float)
+  rm -f results/experiments_summary.csv
+  python run_grid_experiments.py --smoke
 """
 
 from __future__ import annotations
