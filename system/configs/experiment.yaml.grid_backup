@@ -4,7 +4,9 @@ detection:
   iou: 0.5
   classes: [0]
 
-# Nazwa lokalnego trackera SCT (Ultralytics): ByteTrack | BoT-SORT | Deep_OC-SORT | TrackTrack
+# Nazwa lokalnego trackera SCT:
+#   Ultralytics: ByteTrack | BoT-SORT | Deep_OC-SORT | TrackTrack
+#   Lokalne (system/trackers): Hybrid-SORT | BoostTrack++
 sct_tracker:
   name: BoT-SORT
 
@@ -38,19 +40,27 @@ deepocsort:
   gmc_method: sparseOptFlow
   # aw (adaptive weighting) — brak w Ultralytics, pomijane
 
-# Brak backendu w Ultralytics — grid oznaczy jako skipped (sekcje tylko dokumentacyjne)
+# Lokalne implementacje (system/trackers/hybridsort) — oficjalny Hybrid-SORT
 hybridsort:
   det_thresh: 0.6
   track_buffer: 30
   iou_threshold: 0.3
   delta_t: 3
-  hmiou_weight: 1
+  hmiou_weight: 1.0
+  use_byte: true
+  asso_func: Height_Modulated_IoU
 
+# Lokalne implementacje (system/trackers/boosttrackpp) — oficjalny BoostTrack++
 boosttrackpp:
+  det_thresh: 0.6
+  iou_threshold: 0.3
   beta_high: 0.95
   beta_low: 0.8
   varying_frames: 20
   track_buffer: 30
+  use_embedding: false
+  # ECC bywa niestabilny na jednolitych klatkach; włącz przy realnym wideo z ruchem kamery
+  use_ecc: false
 
 tracktrack:
   track_buffer: 60
